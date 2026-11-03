@@ -9,7 +9,13 @@
     "createBoardView": true
   },
   "bootstrap": {
-    "boardViewName": "AppFactory Board",
-    "phases": ["Discovery", "Foundation", "MVP", "Validation", "Release"]
+    "boardViewName": "Trigenys Studio Board",
+    "phases": [
+      "Discovery",
+      "Foundation",
+      "MVP",
+      "Validation",
+      "Release"
+    ]
   }
 }
