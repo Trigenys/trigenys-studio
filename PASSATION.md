@@ -97,3 +97,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Verrous inchangés (propriétaire) : appfactory#185 (Neon/Hyperdrive), compte Cloudflare, Project doublon #15, `APPFACTORY_RELEASE_TOKEN`. Aucun déploiement activé.
 - Écart documenté : Visual QA épinglé sur `8847e48…`, impact/release toujours sur `0523510a…` (le runner n'existe pas à l'ancien SHA) ; aligner à la prochaine revue du registry.
 - Suite : si la gate `visual-qa` échoue en CI (console, Lighthouse), corriger sur la même branche ; à l'« ok » du propriétaire, squash-merge #29 puis incrément suivant (projet Xcode / composant release iOS, ou intégrations réelles selon disponibilité des prérequis).
+
+## 2026-11-05 19:57 — Incrément 9 livré : PR #31 (dossier éditorial et assistant)
+
+- Branche `feat/editorial-assistant`, commit 363e2e6, PR https://github.com/Trigenys/trigenys-studio/pull/31 (Closes #6). CI en cours à l'écriture de cette entrée.
+- Livré : `task_source` + `ai_interaction` (migration 0003), routes `dossier.ts` (sources, assistant, accept, dismiss), adaptateur `integrations/anthropic/llm.ts` (mock par défaut, `live` = secret Worker `ANTHROPIC_API_KEY`, `LLM_MODEL` facultatif), web `Dossier.tsx` / `Assistant.tsx` / `diff.ts`, ADR 0006.
+- Preuves : API 51/51, dry-run ok, contracts/openapi check ok, web typecheck+build ok, Playwright 44/44.
+- Leçon : Playwright `getByLabel` matche par sous-chaîne et compte les sections `aria-labelledby` ("Action" ↔ section "Actions", "Titre" ↔ "Titre de la source"). Les libellés de formulaire doivent rester uniques sur une page : assistant → "Intervention" / "Destination", source → "Nom de la source". Le message « Contenu gelé » est affiché à tous les rôles.
+- Reste : après merge, incrément suivant du backlog (vérifier les issues ouvertes) ; suivi noté : aligner impact/release sur le SHA registry 8847e488 après relecture du diff.
