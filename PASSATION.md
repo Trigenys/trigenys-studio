@@ -60,3 +60,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuve : vitest 38/38, typechecks, openapi:check, contracts check, wrangler dry-run.
 - Prochain : incrément 5 (shell web « Ma journée ») après merge. Blocages owner inchangés : appfactory#185 (Neon), compte Cloudflare, Project #25 doublon.
 - Piège harness : les heredocs bash avec certaines quotes échouent (« unexpected EOF ») → écrire les fichiers via Write/Edit ou python.
+
+## 2026-11-05 17:00 — Incrément 5 : shell web « Ma journée » (PR #24)
+
+- **État** : PR #24 (`feat/web-shell` → `main`, Closes #4) ouverte, en attente de « ok » pour merge. Typecheck, build web, API 38/38, Playwright 14/14 (desktop + Pixel 7).
+- **Livré** : react-router (URL = vue/produit/q), React Query, `views.ts` pur (Aujourd'hui / À valider / Programmées / En retard, recherche sans accents), Login magic link + passkey, page tâche (transitions, approbation), états vide/chargement/erreur, a11y clavier, Vite proxy API → :8787 (bypass HTML), CI gate `web` installe Chromium. ADR 0005.
+- **Leçons** : (1) port 5173 occupé par un autre projet sur cette machine → Playwright/Vite sur 5190 strict ; (2) un `page.route` Playwright intercepte aussi la navigation de document (`/tasks/<id>` recevait le JSON) → `route.continue()` si `resourceType === "document"` ; (3) better-auth doit être à la même version dans api et web (1.7.18) sinon copies imbriquées.
+- **Verrous inchangés** : appfactory#185 (cible Neon), compte Cloudflare, Project #25 doublon (issue #15).
+- **Prochaine étape** : après merge, incrément 6 = prochaine issue P0 du backlog (`gh issue list --label P0`), probablement le flux éditorial côté web (création de tâche, versions, commentaires) ou le mobile Compose Multiplatform.
