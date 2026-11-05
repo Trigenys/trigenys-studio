@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Worker name follows the AppFactory Neon convention: <repo>-api.
+  "name": "trigenys-studio-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": { "enabled": true },
+  // Non-secret configuration only. The Neon URI is injected by AppFactory as a
+  // Worker secret and reaches the Worker through the Hyperdrive binding.
+  "vars": {
+    "SERVICE_NAME": "trigenys-studio-api",
+    "INTEGRATION_PUBLISHER_MODE": "mock",
+    "INTEGRATION_CMS_MODE": "mock",
+    "INTEGRATION_METRICS_MODE": "mock",
+    "INTEGRATION_LLM_MODE": "mock"
+  },
+  // The Hyperdrive id is provisioned by AppFactory (contribution U1, appfactory#185).
+  // Locally, set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE to a dev branch URI.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }
+  ]
+}
