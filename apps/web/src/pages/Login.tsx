@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { authClient } from "../api/client";
 
 type Status = { kind: "idle" } | { kind: "busy" } | { kind: "sent"; email: string } | { kind: "error"; message: string };
@@ -56,6 +56,9 @@ export function LoginPage() {
         <button type="button" className="btn" onClick={usePasskey} disabled={busy}>
           Utiliser une passkey
         </button>
+        <p className="login-link">
+          <Link to="/today">Déjà connecté ? Ouvrir Ma journée</Link>
+        </p>
         <p role="status" aria-live="polite" className="login-status">
           {status.kind === "sent" ? `Lien envoyé à ${status.email}. Il est valable 15 minutes.` : null}
           {status.kind === "error" ? status.message : null}

@@ -48,7 +48,9 @@ Migrations : `npm run db:generate -w services/api` après un changement de `src/
 
 - **CI change-scoped** : `.github/appfactory-impact.json` décrit les surfaces ; seuls les gates impactés s'exécutent (`reusable-impact-analysis`).
 - **Project Automation** : issues et PR synchronisées sur le board via le broker OIDC (zéro PAT).
-- **Release** : Release Please en mode manifest, un composant par application.
+- **Visual QA** : `.github/appfactory-visual-qa.json` liste les pages publiques vérifiées par `reusable-visual-qa.yml` (captures, clavier, axe, motion réduite, budgets Lighthouse) ; les écrans derrière la session sont couverts par axe dans Playwright (`apps/web/e2e/accessibility.spec.ts`).
+- **Release** : Release Please en mode manifest, un composant par application (`web`, `api`, `contracts`, `mobile`).
+- **Exploitation** : environnements, politique de secrets, staging avant production et versioning dans [docs/operations.md](docs/operations.md).
 
 Les workflows réutilisables sont épinglés sur un SHA revu d'AppFactory Project Automation.
 

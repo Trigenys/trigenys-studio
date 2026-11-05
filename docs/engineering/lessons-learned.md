@@ -32,3 +32,31 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 
 **Leçon généralisée** — Quand un même source est exécuté par plusieurs runtimes, aligner le sous-ensemble de syntaxe sur le plus strict et le faire vérifier par le compilateur, pas par l'exécution.
 
+
+### LESSON-STUDIO-2026-003 — Chaîne Android (Gradle 9.6, AGP 9.4, compileSdk 37.x) : dépréciations traitées en erreurs et plateformes mineures
+
+**Contexte** — Premier build du client Compose Multiplatform (`apps/mobile`) avec Gradle 9.6 sans wrapper, AGP 9.4 et les dépendances AndroidX 1.12.x, hors poste de développement (image Docker, CI GitHub).
+
+**Failure / near miss** — Trois arrêts successifs du build : (1) les AndroidX récents exigent `compileSdk ≥ 37`, or seules les plateformes mineures `android-37.0/37.1/37.2` sont publiées, absentes de l'image SDK ; (2) Gradle 9.6 convertit les dépréciations du DSL Kotlin en erreurs (`androidLibrary {}`, `compileSdkMinor`, accesseurs `compose.*`) ; (3) des API dépréciées dans le code et les tests (`TabRow`, `Month.number`, `headersOf(vararg)`, `createComposeRule` v1) cassaient la compilation avec `allWarningsAsErrors`.
+
+**Cause racine** — Versions choisies « les plus récentes » sans vérifier les contraintes croisées (AndroidX ↔ compileSdk ↔ image SDK ↔ DSL AGP) ; aucune exécution hors poste avant d'écrire tout le module.
+
+**Résolution** — `compileSdk { version = release(37) { minorApiLevel = 2 } }` partagé par le catalogue (`android-compileSdk`, `android-compileSdkMinor`) ; bloc `android {}` du plugin KMP ; artefacts Compose explicites ; image Docker dérivée `studio-android-sdk:37.2` (`platforms;android-37.2`) ; API remplacées par leurs successeurs.
+
+**Prévention** — Le gate CI `mobile-android` installe explicitement `platforms;android-37.2` ; les versions sont centralisées dans `gradle/libs.versions.toml` ; toute montée de version AndroidX/AGP passe d'abord par la commande Docker du README mobile avant d'être poussée.
+
+**Leçon généralisée** — Sur une chaîne de build à plusieurs couches (SDK, plugin, bibliothèques, outil de build), figer les versions ensemble et compiler dans l'environnement cible dès le premier fichier, pas une fois le module écrit.
+
+### LESSON-STUDIO-2026-004 — Roborazzi n'écrit aucune capture sans mode `record`
+
+**Contexte** — Test de capture `DayScreenScreenshotTest` (Robolectric + Roborazzi) exécuté en CI avec publication des PNG en artefact.
+
+**Failure / near miss** — Le test passait vert mais le dossier `androidApp/src/test/screenshots/` restait vide : sans `-Proborazzi.test.record=true`, Roborazzi compare à une référence et ne crée rien quand elle manque.
+
+**Cause racine** — Mode par défaut implicite (`compare`) supposé équivalent à « capturer ».
+
+**Résolution** — Commande CI et README en mode `record` ; la capture de référence est versionnée.
+
+**Prévention** — L'artefact CI `appfactory-visual-qa`/`mobile-screenshots` est inspecté lors de la revue de PR ; un test vert sans fichier produit est un signal d'alerte.
+
+**Leçon généralisée** — Un outil qui « réussit » sans produire de sortie doit être vérifié sur sa sortie, pas sur son code de retour.
