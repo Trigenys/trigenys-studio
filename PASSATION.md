@@ -124,3 +124,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Cause : `getByRole("status")` ambigu sur mobile (rapport de synchro + état vide encore monté) et `getByLabel("Produit")` qui attrape la nav du tableau de bord pendant la transition. Correction : `filter({ hasText })` et `getByRole("combobox", { name })`. Leçon : viser le rôle précis dès qu'un libellé est partagé entre une nav et un champ.
 - Dépôt GitHub = `Trigenys/trigenys-studio` (pas EagleFox31) : les logs de job se lisent via `gh api --allow-escape-sequences repos/Trigenys/trigenys-studio/actions/jobs/<id>/logs`.
 - Suite : merge #32 dès CI verte, puis incrément 11 = #8 (pipeline visuel et brand kits).
+
+## 2026-11-05 20:51 — Incrément 11 (#8) : plan architecte reçu, implémentation démarre
+
+- PR #32 : fix e2e poussé (commit test(web)), CI en cours ; merge squash dès verte. Branche de travail `feat/visuals-brand-kits` créée depuis le tip de #32 (à rebaser sur main après le squash : `git rebase --onto origin/main feat/imports-cms-radar`).
+- Plan retenu : moteur SVG déterministe `svg@1` (Adapt de la route OG satori de Trigenys-Insight, sans wasm), interface `VisualRenderer` ; `MediaStore` (R2 `VISUALS` en live, mémoire en test, `INTEGRATION_MEDIA_MODE`) ; tables `visual_format` (seed 4 formats, migration custom), `brand_kit` (versionné, un seul approved par produit, logo hashé, kit_hash), `visual_asset` (dédup content_hash actif, variantes, discard logique) ; `assetSetHashOf` réel (jeu vide = sha256("[]") conservé) ; routes `/visual-formats`, `/products/{id}/brand-kits`, `/brand-kits/{id}/approve|logo`, `/tasks/{id}/visuals`, `/visuals/{id}/file` ; web : page BrandKits (admin) + section Visuels sur TaskPage ; ADR 0008.
+- Ordre : schéma/migrations → renderer+canonical → MediaStore/registry/harness → engine → routes+tests → contrats → web+e2e → ADR/PR.
