@@ -7,7 +7,22 @@
   "packages": {
     "apps/web": {
       "component": "web",
-      "extra-files": ["package.json"]
+      "extra-files": [
+        "package.json"
+      ]
+    },
+    "services/api": {
+      "component": "api",
+      "extra-files": [
+        "package.json",
+        "src/version.ts"
+      ]
+    },
+    "packages/contracts": {
+      "component": "contracts",
+      "extra-files": [
+        "package.json"
+      ]
     }
   }
 }

@@ -12,12 +12,21 @@
   "surfaces": {
     "contracts": {
       "paths": ["packages/contracts/**"],
-      "gates": []
+      "gates": ["contracts"]
+    },
+    "api": {
+      "paths": ["services/api/**"],
+      "gates": ["api"],
+      "dependsOn": ["contracts"]
     },
     "web": {
-      "paths": ["apps/web/**", "package.json", "package-lock.json"],
+      "paths": ["apps/web/**"],
       "gates": ["web"],
       "dependsOn": ["contracts"]
+    },
+    "workspace": {
+      "paths": ["package.json", "package-lock.json"],
+      "gates": ["web", "api", "contracts"]
     },
     "release": {
       "paths": [
@@ -29,7 +38,7 @@
     },
     "ci": {
       "paths": [".github/appfactory-impact.json", ".github/workflows/ci.yml"],
-      "gates": ["web"]
+      "gates": ["web", "api", "contracts"]
     }
   }
 }
