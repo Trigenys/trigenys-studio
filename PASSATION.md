@@ -68,3 +68,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - **Leçons** : (1) port 5173 occupé par un autre projet sur cette machine → Playwright/Vite sur 5190 strict ; (2) un `page.route` Playwright intercepte aussi la navigation de document (`/tasks/<id>` recevait le JSON) → `route.continue()` si `resourceType === "document"` ; (3) better-auth doit être à la même version dans api et web (1.7.18) sinon copies imbriquées.
 - **Verrous inchangés** : appfactory#185 (cible Neon), compte Cloudflare, Project #25 doublon (issue #15).
 - **Prochaine étape** : après merge, incrément 6 = prochaine issue P0 du backlog (`gh issue list --label P0`), probablement le flux éditorial côté web (création de tâche, versions, commentaires) ou le mobile Compose Multiplatform.
+
+## 2026-11-05 17:24 — Incrément 6 : flux éditorial web (PR #26)
+
+- Issue #25 livrée sur `feat/web-editorial` : `/tasks/new`, édition des métadonnées (version optimiste, 409 + « Recharger »), versions de contenu avec historique replié, commentaires, motif sur « À corriger » / « Échec », historique des transitions.
+- Contrat : `ContentVersion` et `Approval` ne sont plus nullables (`z.union([Schema, z.null()])` dans `TaskDetail`) ; OpenAPI et `schema.d.ts` régénérés.
+- Preuve : typecheck OK, build web OK, API 38/38, Playwright 28/28 (desktop + Pixel 7).
+- Leçons : (1) `.nullable()` sur un schéma `.openapi("Nom")` rend le composant lui-même nullable → union explicite à l'usage ; (2) un `<details>` replié rend ses enfants (locators stricts en doublon, requêtes inutiles) → rendu paresseux à l'ouverture ; (3) les routes Playwright interceptent aussi les navigations document → `route.continue()` quand `resourceType() === "document"`.
+- Suite : merge de #26 puis incrément 7 (client mobile Compose Multiplatform ou #12 release). Bloqueurs côté propriétaire inchangés : Neon (appfactory#185), compte Cloudflare, Project en doublon (#15).
