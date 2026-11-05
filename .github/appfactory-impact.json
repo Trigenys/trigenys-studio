@@ -24,6 +24,11 @@
       "gates": ["web"],
       "dependsOn": ["contracts"]
     },
+    "mobile": {
+      "paths": ["apps/mobile/**"],
+      "gates": ["mobile-android", "mobile-ios"],
+      "dependsOn": ["contracts"]
+    },
     "workspace": {
       "paths": ["package.json", "package-lock.json"],
       "gates": ["web", "api", "contracts"]
@@ -38,7 +43,7 @@
     },
     "ci": {
       "paths": [".github/appfactory-impact.json", ".github/workflows/ci.yml"],
-      "gates": ["web", "api", "contracts"]
+      "gates": ["web", "api", "contracts", "mobile-android", "mobile-ios"]
     }
   }
 }
