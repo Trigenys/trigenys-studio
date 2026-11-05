@@ -49,3 +49,14 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Prochaine étape : vérifier la CI de #22, merger, puis incrément 4 (schéma pipeline de contenu,
   machine à états, routes `content` branchées sur `content.publish`).
 - Toujours côté propriétaire : appfactory#185 (cible Neon), compte Cloudflare, Project #25 en double.
+
+## 2026-11-05 16:36 — Incrément 4 : pipeline de contenu (PR #23)
+
+- Branche `feat/pipeline`, PR #23 (Closes #5), en attente de CI/merge.
+- Migration 0002 : product, task, content_version, comment, approval, task_transition, idempotency_key.
+- `src/pipeline/definition.ts` (états/transitions/gardes déclaratifs) + `engine.ts` (snapshot, gardes, applyTransition sous FOR UPDATE).
+- Approbation liée à content_hash + asset_set_hash (placeholder sha256('[]') jusqu'aux visuels) ; quatre yeux ; nouvelle version → `preparing`.
+- `src/idempotency.ts` : Idempotency-Key par acteur, 422 si réutilisée avec un autre payload.
+- Preuve : vitest 38/38, typechecks, openapi:check, contracts check, wrangler dry-run.
+- Prochain : incrément 5 (shell web « Ma journée ») après merge. Blocages owner inchangés : appfactory#185 (Neon), compte Cloudflare, Project #25 doublon.
+- Piège harness : les heredocs bash avec certaines quotes échouent (« unexpected EOF ») → écrire les fichiers via Write/Edit ou python.
