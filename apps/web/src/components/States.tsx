@@ -16,7 +16,7 @@ export function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ErrorState({ error, retry }: { error: ApiError | Error; retry?: () => void }) {
+export function ErrorState({ error, retry, retryLabel = "Réessayer" }: { error: ApiError | Error; retry?: () => void; retryLabel?: string }) {
   const problem = "problem" in error ? error.problem : null;
   return (
     <div className="state state-error" role="alert">
@@ -27,7 +27,7 @@ export function ErrorState({ error, retry }: { error: ApiError | Error; retry?: 
       </p>
       {retry ? (
         <button type="button" className="btn" onClick={retry}>
-          Réessayer
+          {retryLabel}
         </button>
       ) : null}
     </div>

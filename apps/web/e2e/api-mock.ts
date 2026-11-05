@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import type { Me, Product, Task, TaskDetail } from "@trigenys/studio-contracts";
+import type { Comment, ContentVersion, Me, Product, Task, TaskDetail, TaskTransition } from "@trigenys/studio-contracts";
 
 export const me: Me = {
   userId: "u-operator",
@@ -38,60 +38,166 @@ export const tasks: Task[] = [
   { ...base, id: "55555555-5555-4555-8555-555555555555", productId: "insight", type: "post", title: "Thread sur la qualité des données", state: "qualifying", dueAt: null, assigneeId: "u-operator" },
 ];
 
-export const detailOf = (t: Task): TaskDetail => ({
-  ...t,
-  brief: "Annoncer la disponibilité d'Insight aux équipes data.",
-  latestVersion:
-    t.state === "qualifying"
-      ? null
-      : {
-          id: "v-1",
-          taskId: t.id,
-          n: 1,
-          channel: "linkedin",
-          body: "Insight est disponible.",
-          contentHash: "abc",
-          aiAssisted: false,
-          authorId: "u-admin",
-          createdAt: "2026-01-02T00:00:00.000Z",
-        },
-  latestApproval: null,
-  approvalValid: false,
-  allowedTransitions: t.state === "preparing" ? ["reviewing"] : [],
-});
+const FROZEN: Task["state"][] = ["scheduled", "published", "measured"];
 
-type Options = { signedIn?: boolean; tasksStatus?: number };
+const seedVersion = (t: Task): ContentVersion | null =>
+  t.state === "qualifying"
+    ? null
+    : {
+        id: `v-${t.id.slice(0, 8)}`,
+        taskId: t.id,
+        n: 1,
+        channel: "linkedin",
+        body: "Insight est disponible.",
+        contentHash: "abc",
+        aiAssisted: false,
+        authorId: "u-admin",
+        createdAt: "2026-01-02T00:00:00.000Z",
+      };
 
-// Intercepts every API call the app makes; the mock mirrors the Worker's
-// filtering by productId so the product filter is exercised for real.
-export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200 }: Options = {}) {
+// What the Worker would allow for `me` (operator on insight, reviewer
+// everywhere): enough for the pages to offer the right buttons.
+const allowed = (t: Task, hasContent: boolean): Task["state"][] => {
+  switch (t.state) {
+    case "qualifying":
+      return ["preparing"];
+    case "preparing":
+      return hasContent ? ["reviewing"] : [];
+    case "reviewing":
+      return t.productId === "insight" ? ["visuals", "needs_fix"] : ["needs_fix"];
+    default:
+      return [];
+  }
+};
+
+export const detailOf = (t: Task, versions: ContentVersion[] = []): TaskDetail => {
+  const latestVersion = versions.at(-1) ?? seedVersion(t);
+  return {
+    ...t,
+    brief: t.brief || "Annoncer la disponibilité d'Insight aux équipes data.",
+    latestVersion,
+    latestApproval: null,
+    approvalValid: false,
+    allowedTransitions: allowed(t, latestVersion !== null),
+  };
+};
+
+type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number };
+
+const problem = (status: number, title: string) => ({ type: "about:blank", title, status });
+
+// Intercepts every API call the app makes with an in-memory store per page,
+// mirroring the Worker's rules the UI relies on: product filtering, frozen
+// content, optimistic version on updates, transitions recorded in history.
+export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, updateStatus = 200 }: Options = {}) {
+  const store = {
+    tasks: tasks.map((t) => ({ ...t })),
+    versions: new Map<string, ContentVersion[]>(),
+    comments: new Map<string, Comment[]>(),
+    history: new Map<string, TaskTransition[]>(),
+  };
+  const find = (id: string | undefined) => store.tasks.find((x) => x.id === id);
+  const detail = (t: Task) => detailOf(t, store.versions.get(t.id));
+  const stamp = () => new Date().toISOString();
+  const uuid = () => crypto.randomUUID();
+
   const json = (route: Route, status: number, body: unknown) =>
     route.request().resourceType() === "document"
       ? route.continue() // a page navigation such as /tasks/<id>: let Vite serve the SPA
       : route.fulfill({ status, contentType: status >= 400 ? "application/problem+json" : "application/json", body: JSON.stringify(body) });
 
-  await page.route("**/me", (route) =>
-    signedIn ? json(route, 200, me) : json(route, 401, { type: "about:blank", title: "No valid session", status: 401 }),
-  );
+  await page.route("**/me", (route) => (signedIn ? json(route, 200, me) : json(route, 401, problem(401, "No valid session"))));
   await page.route("**/products", (route) => json(route, 200, products));
+
   await page.route("**/tasks?**", (route) => {
-    if (tasksStatus !== 200) return json(route, tasksStatus, { type: "about:blank", title: "Service indisponible", status: tasksStatus });
+    if (tasksStatus !== 200) return json(route, tasksStatus, problem(tasksStatus, "Service indisponible"));
     const productId = new URL(route.request().url()).searchParams.get("productId");
-    return json(route, 200, productId ? tasks.filter((t) => t.productId === productId) : tasks);
+    return json(route, 200, productId ? store.tasks.filter((t) => t.productId === productId) : store.tasks);
   });
-  await page.route("**/tasks", (route) =>
-    tasksStatus === 200 ? json(route, 200, tasks) : json(route, tasksStatus, { type: "about:blank", title: "Service indisponible", status: tasksStatus }),
-  );
+  await page.route("**/tasks", (route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as Partial<Task>;
+      const t: Task = {
+        ...base,
+        id: uuid(),
+        productId: body.productId!,
+        type: body.type!,
+        title: body.title!,
+        brief: body.brief ?? "",
+        priority: body.priority ?? 0,
+        dueAt: body.dueAt ?? null,
+        assigneeId: body.assigneeId ?? null,
+        state: "qualifying",
+        createdBy: me.userId,
+        createdAt: stamp(),
+        updatedAt: stamp(),
+      };
+      store.tasks.push(t);
+      return json(route, 201, detail(t));
+    }
+    return tasksStatus === 200 ? json(route, 200, store.tasks) : json(route, tasksStatus, problem(tasksStatus, "Service indisponible"));
+  });
+
   await page.route(/\/tasks\/[0-9a-f-]{36}$/, (route) => {
-    const id = route.request().url().split("/").pop();
-    const t = tasks.find((x) => x.id === id);
-    return t ? json(route, 200, detailOf(t)) : json(route, 404, { type: "about:blank", title: "Not found", status: 404 });
+    const t = find(route.request().url().split("/").pop());
+    if (!t) return json(route, 404, problem(404, "Not found"));
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON() as { version: number } & Partial<Task>;
+      if (updateStatus !== 200 || body.version !== t.version) return json(route, 409, problem(409, "Version obsolète"));
+      Object.assign(t, body, { version: t.version + 1, updatedAt: stamp() });
+      return json(route, 200, detail(t));
+    }
+    return json(route, 200, detail(t));
   });
-  await page.route(/\/tasks\/[0-9a-f-]{36}\/(transitions|approvals)$/, async (route) => {
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/versions$/, (route) => {
     const [, id] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\//)!;
-    const t = tasks.find((x) => x.id === id)!;
-    const body = route.request().postDataJSON() as { to?: Task["state"]; decision?: "approved" | "rejected" };
-    const state: Task["state"] = body.to ?? (body.decision === "approved" ? "approved" : "rejected");
-    return json(route, body.to ? 200 : 201, { ...detailOf({ ...t, state }), allowedTransitions: [] });
+    const t = find(id)!;
+    const list = store.versions.get(t.id) ?? (seedVersion(t) ? [seedVersion(t)!] : []);
+    if (route.request().method() === "POST") {
+      if (FROZEN.includes(t.state)) return json(route, 409, problem(409, "Contenu gelé"));
+      const body = route.request().postDataJSON() as { channel: string; body: string; aiAssisted?: boolean };
+      const v: ContentVersion = {
+        id: uuid(),
+        taskId: t.id,
+        n: list.length + 1,
+        channel: body.channel,
+        body: body.body,
+        contentHash: `h${list.length + 1}`,
+        aiAssisted: body.aiAssisted ?? false,
+        authorId: me.userId,
+        createdAt: stamp(),
+      };
+      store.versions.set(t.id, [...list, v]);
+      if (t.state === "awaiting_approval" || t.state === "approved") t.state = "preparing";
+      return json(route, 201, v);
+    }
+    return json(route, 200, list);
+  });
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/comments$/, (route) => {
+    const [, id] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\//)!;
+    const list = store.comments.get(id) ?? [];
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as { body: string };
+      const c: Comment = { id: uuid(), taskId: id, authorId: me.userId, body: body.body, createdAt: stamp() };
+      store.comments.set(id, [...list, c]);
+      return json(route, 201, c);
+    }
+    return json(route, 200, list);
+  });
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/(transitions|approvals)$/, (route) => {
+    const [, id, kind] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\/(transitions|approvals)$/)!;
+    const t = find(id)!;
+    if (route.request().method() === "GET") return json(route, 200, kind === "transitions" ? (store.history.get(id) ?? []) : []);
+    const body = route.request().postDataJSON() as { to?: Task["state"]; reason?: string | null; decision?: "approved" | "rejected" };
+    const to: Task["state"] = body.to ?? (body.decision === "approved" ? "approved" : "rejected");
+    store.history.set(id, [
+      ...(store.history.get(id) ?? []),
+      { id: uuid(), taskId: id, fromState: t.state, toState: to, actorId: me.userId, reason: body.reason ?? null, createdAt: stamp() },
+    ]);
+    t.state = to;
+    return json(route, body.to ? 200 : 201, { ...detail(t), allowedTransitions: [] });
   });
 }
