@@ -1,5 +1,6 @@
 import type { Bindings, IntegrationMode } from "../env.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher } from "./mock/index.ts";
+import { MockMailer } from "./mock/mailer.ts";
 import type { Integrations } from "./types.ts";
 
 export class IntegrationNotAvailableError extends Error {
@@ -19,21 +20,24 @@ export function integrationModes(env: Bindings): Record<keyof Integrations, Inte
     cms: normalise(env.INTEGRATION_CMS_MODE),
     metrics: normalise(env.INTEGRATION_METRICS_MODE),
     llm: normalise(env.INTEGRATION_LLM_MODE),
+    email: normalise(env.INTEGRATION_EMAIL_MODE),
   };
 }
 
 // Live adapters are added one by one (Buffer, Insight CMS, SEO Monitor,
 // AI Gateway). Until then a "live" mode is an explicit, actionable error
 // instead of a silent fallback to mock.
-export function createIntegrations(env: Bindings): Integrations {
+export function createIntegrations(env: Bindings, overrides: Partial<Integrations> = {}): Integrations {
   const modes = integrationModes(env);
   for (const kind of Object.keys(modes) as (keyof Integrations)[]) {
-    if (modes[kind] === "live") throw new IntegrationNotAvailableError(kind, "live");
+    if (modes[kind] === "live" && !overrides[kind]) throw new IntegrationNotAvailableError(kind, "live");
   }
   return {
     publisher: new MockPublisher(),
     cms: new MockCms(),
     metrics: new MockMetrics(),
     llm: new MockLlm(),
+    email: new MockMailer((line) => console.log(line)),
+    ...overrides,
   };
 }

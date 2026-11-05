@@ -65,9 +65,22 @@ export interface Llm {
   complete(request: LlmRequest): Promise<LlmResult>;
 }
 
+export type Mail = {
+  to: string;
+  template: "magic-link";
+  subject: string;
+  text: string;
+};
+
+export interface Mailer {
+  readonly name: string;
+  send(mail: Mail): Promise<void>;
+}
+
 export type Integrations = {
   publisher: Publisher;
   cms: Cms;
   metrics: MetricsProvider;
   llm: Llm;
+  email: Mailer;
 };

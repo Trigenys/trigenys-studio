@@ -32,6 +32,12 @@ npm run generate -w packages/contracts    # régénère le client TypeScript
 
 `npm run dev -w services/api` démarre le Worker avec wrangler. Les intégrations sont en mode `mock` par défaut (`INTEGRATION_<X>_MODE`). Pour la base, définir `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` sur une branche Neon de développement ; aucune URI n'est commise. La CI vérifie que `openapi.json` et `schema.d.ts` sont à jour par rapport au code.
 
+Authentification (Better Auth, tables dans Neon via Drizzle) : passkeys et magic link, sans mot de passe ; les clients natifs utilisent le jeton `set-auth-token` en `Authorization: Bearer`. Variables : `AUTH_SECRET` (secret Worker, 32 caractères minimum, jamais commis), `AUTH_BASE_URL`, `AUTH_TRUSTED_ORIGINS`, `PASSKEY_RP_ID`/`PASSKEY_RP_NAME`. En mode `INTEGRATION_EMAIL_MODE=mock`, le lien magique est écrit dans les logs du Worker.
+
+Autorisation : rôles `admin`, `operator`, `reviewer` (`role_assignment`, éventuellement par produit) et politiques déclaratives dans `services/api/src/auth/rbac.ts` ; `authorize(action, resource)` répond 401/403 (problem+json). Chaque changement d'état passe par `audited()` : la ligne `audit_event` est écrite dans la même transaction, et un trigger rend la table append-only.
+
+Migrations : `npm run db:generate -w services/api` après un changement de `src/db/schema.ts`, `npm run db:migrate -w services/api` avec `DATABASE_URL`. Les tests rejouent les migrations sur PGlite (Postgres en mémoire), sans base externe.
+
 ## CI / automatisation
 
 - **CI change-scoped** : `.github/appfactory-impact.json` décrit les surfaces ; seuls les gates impactés s'exécutent (`reusable-impact-analysis`).
