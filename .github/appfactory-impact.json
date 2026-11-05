@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "fallback": "all",
+  "ignorePaths": [
+    "README.md",
+    "PASSATION.md",
+    "AGENTS.md",
+    "docs/**",
+    ".github/project-config.json",
+    ".github/workflows/project-automation.yml"
+  ],
+  "surfaces": {
+    "contracts": {
+      "paths": ["packages/contracts/**"],
+      "gates": []
+    },
+    "web": {
+      "paths": ["apps/web/**", "package.json", "package-lock.json"],
+      "gates": ["web"],
+      "dependsOn": ["contracts"]
+    },
+    "release": {
+      "paths": [
+        ".release-please-manifest.json",
+        "release-please-config.json",
+        ".github/workflows/release.yml"
+      ],
+      "gates": ["release-config"]
+    },
+    "ci": {
+      "paths": [".github/appfactory-impact.json", ".github/workflows/ci.yml"],
+      "gates": ["web"]
+    }
+  }
+}

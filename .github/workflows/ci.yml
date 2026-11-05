@@ -4,12 +4,22 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  validate:
+  impact:
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-impact-analysis.yml@0523510a8e42290df3bae5749d034b1637569af5
+    with:
+      appfactory_ref: 0523510a8e42290df3bae5749d034b1637569af5
+      config_path: .github/appfactory-impact.json
+      mode: ${{ github.event_name == 'workflow_dispatch' && 'all' || 'auto' }}
+
+  web:
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'web') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -17,5 +27,41 @@ jobs:
         with:
           node-version: 24
       - run: npm install --ignore-scripts
-      - run: npm run typecheck
-      - run: npm run build
+      - run: npm run typecheck --workspace apps/web
+      - run: npm run build --workspace apps/web
+
+  release-config:
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'release-config') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate Release Please manifest and config
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const config = JSON.parse(readFileSync("release-please-config.json", "utf8"));
+            const manifest = JSON.parse(readFileSync(".release-please-manifest.json", "utf8"));
+            const missing = Object.keys(config.packages).filter((p) => !(p in manifest));
+            if (missing.length) { console.error("Packages missing from manifest:", missing); process.exit(1); }
+            console.log("Release Please manifest covers", Object.keys(config.packages).length, "package(s).");
+          '
+
+  # Always-green summary job so branch protection can require a single stable check
+  # regardless of which surfaces the change impacted.
+  ci-summary:
+    needs: [impact, web, release-config]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any impacted gate failed
+        run: |
+          echo "Impacted surfaces: ${{ needs.impact.outputs.surfaces }}"
+          echo "Required gates: ${{ needs.impact.outputs.gates }}"
+          if [ "${{ needs.impact.result }}" != "success" ]; then exit 1; fi
+          for r in "${{ needs.web.result }}" "${{ needs.release-config.result }}"; do
+            case "$r" in success|skipped) ;; *) exit 1 ;; esac
+          done
