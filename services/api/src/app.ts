@@ -9,7 +9,9 @@ import type { Integrations } from "./integrations/types.ts";
 import { ProblemError, ProblemSchema, problem } from "./problem.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { meRoutes } from "./routes/me.ts";
+import { productRoutes } from "./routes/products.ts";
 import { roleRoutes } from "./routes/roles.ts";
+import { taskRoutes } from "./routes/tasks.ts";
 import { VERSION } from "./version.ts";
 
 export const openApiInfo = {
@@ -25,6 +27,7 @@ export const openApiInfo = {
   tags: [
     { name: "system", description: "État du service" },
     { name: "identity", description: "Utilisateur courant et rôles" },
+    { name: "pipeline", description: "Produits, tâches, contenus, transitions et approbations" },
   ],
 };
 
@@ -97,7 +100,7 @@ export function createApp(deps: AppDeps = {}) {
         }
       },
       credentials: true,
-      allowHeaders: ["content-type", "authorization"],
+      allowHeaders: ["content-type", "authorization", "idempotency-key"],
       exposeHeaders: ["set-auth-token"],
     }),
   );
@@ -107,6 +110,8 @@ export function createApp(deps: AppDeps = {}) {
   app.use("*", sessionMiddleware);
   app.route("/", meRoutes);
   app.route("/", roleRoutes);
+  app.route("/", productRoutes);
+  app.route("/", taskRoutes);
 
   return app;
 }

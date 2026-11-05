@@ -1,5 +1,16 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 // ---------------------------------------------------------------------------
 // Identity: tables owned by Better Auth (core schema + passkey plugin).
@@ -172,3 +183,147 @@ export const passkeyRelations = relations(passkey, ({ one }) => ({
 export const roleAssignmentRelations = relations(roleAssignment, ({ one }) => ({
   user: one(user, { fields: [roleAssignment.userId], references: [user.id] }),
 }));
+
+// ---------------------------------------------------------------------------
+// Products and the editorial pipeline. States are identifiers; the pipeline
+// definition (src/pipeline/definition.ts) says which transitions exist, who may
+// take them and under which guard. Labels belong to the clients.
+// ---------------------------------------------------------------------------
+
+export const product = pgTable("product", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const TASK_STATES = [
+  "qualifying",
+  "preparing",
+  "reviewing",
+  "visuals",
+  "awaiting_approval",
+  "approved",
+  "scheduled",
+  "published",
+  "measured",
+  "needs_fix",
+  "rejected",
+  "failed",
+] as const;
+export type TaskState = (typeof TASK_STATES)[number];
+
+export const task = pgTable(
+  "task",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    brief: text("brief").notNull().default(""),
+    state: text("state", { enum: TASK_STATES }).notNull().default("qualifying"),
+    priority: integer("priority").notNull().default(0),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    assigneeId: text("assignee_id").references(() => user.id, { onDelete: "set null" }),
+    // Optimistic concurrency: every mutation bumps it and clients send it back.
+    version: integer("version").notNull().default(1),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("task_product_state_idx").on(t.productId, t.state),
+    index("task_assignee_idx").on(t.assigneeId),
+    index("task_due_at_idx").on(t.dueAt),
+  ],
+);
+
+export const contentVersion = pgTable(
+  "content_version",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    channel: text("channel").notNull(),
+    body: text("body").notNull(),
+    contentHash: text("content_hash").notNull(),
+    aiAssisted: boolean("ai_assisted").notNull().default(false),
+    authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("content_version_task_n_idx").on(t.taskId, t.n)],
+);
+
+export const comment = pgTable(
+  "comment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("comment_task_idx").on(t.taskId)],
+);
+
+export const APPROVAL_DECISIONS = ["approved", "rejected"] as const;
+export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
+
+// An approval is bound to what was approved: the content version and the
+// asset set, by hash. Publication re-checks both against the current state.
+export const approval = pgTable(
+  "approval",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    contentVersionId: uuid("content_version_id")
+      .notNull()
+      .references(() => contentVersion.id, { onDelete: "restrict" }),
+    contentHash: text("content_hash").notNull(),
+    assetSetHash: text("asset_set_hash").notNull(),
+    approverId: text("approver_id").references(() => user.id, { onDelete: "set null" }),
+    decision: text("decision", { enum: APPROVAL_DECISIONS }).notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("approval_task_idx").on(t.taskId)],
+);
+
+export const taskTransition = pgTable(
+  "task_transition",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    fromState: text("from_state", { enum: TASK_STATES }).notNull(),
+    toState: text("to_state", { enum: TASK_STATES }).notNull(),
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("task_transition_task_idx").on(t.taskId)],
+);
+
+// Replay store for Idempotency-Key: one row per (key, actor); the fingerprint
+// detects a key reused for a different request.
+export const idempotencyKey = pgTable(
+  "idempotency_key",
+  {
+    key: text("key").notNull(),
+    actorId: text("actor_id").notNull(),
+    scope: text("scope").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    status: integer("status").notNull(),
+    body: jsonb("body"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.actorId] })],
+);

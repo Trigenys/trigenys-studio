@@ -41,6 +41,8 @@ export const policies = {
   "role.read": roleOf(["admin"], "Reading role assignments"),
   "role.grant": roleOf(["admin"], "Granting a role"),
   "role.revoke": roleOf(["admin"], "Revoking a role"),
+  "product.read": roleOf(["admin", "operator", "reviewer"], "Reading products"),
+  "product.manage": roleOf(["admin"], "Managing products"),
   "content.read": roleOf(["admin", "operator", "reviewer"], "Reading content"),
   "content.write": roleOf(["admin", "operator"], "Editing content"),
   "content.review": roleOf(["admin", "reviewer"], "Reviewing content"),
