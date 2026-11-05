@@ -1,14 +1,26 @@
 import type { Bindings, IntegrationMode } from "../env.ts";
+import { AnthropicLlm } from "./anthropic/llm.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
 import type { Integrations } from "./types.ts";
 
 export class IntegrationNotAvailableError extends Error {
-  constructor(kind: keyof Integrations, mode: IntegrationMode) {
-    super(`Integration "${kind}" has no "${mode}" adapter yet`);
+  constructor(kind: keyof Integrations, mode: IntegrationMode, detail?: string) {
+    super(detail ?? `Integration "${kind}" has no "${mode}" adapter yet`);
     this.name = "IntegrationNotAvailableError";
   }
 }
+
+// Live adapters, one per integration kind, built from the Worker bindings.
+// A missing secret is an explicit, actionable error at request time.
+const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations[K] }> = {
+  llm: (env) => {
+    if (!env.ANTHROPIC_API_KEY) {
+      throw new IntegrationNotAvailableError("llm", "live", 'INTEGRATION_LLM_MODE=live requires the ANTHROPIC_API_KEY secret');
+    }
+    return new AnthropicLlm({ apiKey: env.ANTHROPIC_API_KEY, model: env.LLM_MODEL });
+  },
+};
 
 function normalise(value: IntegrationMode | undefined): IntegrationMode {
   return value === "live" ? "live" : "mock";
@@ -29,8 +41,12 @@ export function integrationModes(env: Bindings): Record<keyof Integrations, Inte
 // instead of a silent fallback to mock.
 export function createIntegrations(env: Bindings, overrides: Partial<Integrations> = {}): Integrations {
   const modes = integrationModes(env);
+  const selected: Partial<Integrations> = {};
   for (const kind of Object.keys(modes) as (keyof Integrations)[]) {
-    if (modes[kind] === "live" && !overrides[kind]) throw new IntegrationNotAvailableError(kind, "live");
+    if (modes[kind] !== "live" || overrides[kind]) continue;
+    const factory = live[kind];
+    if (!factory) throw new IntegrationNotAvailableError(kind, "live");
+    (selected as Record<string, unknown>)[kind] = factory(env);
   }
   return {
     publisher: new MockPublisher(),
@@ -38,6 +54,7 @@ export function createIntegrations(env: Bindings, overrides: Partial<Integration
     metrics: new MockMetrics(),
     llm: new MockLlm(),
     email: new MockMailer((line) => console.log(line)),
+    ...selected,
     ...overrides,
   };
 }

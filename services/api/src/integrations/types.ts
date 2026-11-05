@@ -50,6 +50,8 @@ export interface MetricsProvider {
 
 export type LlmRequest = {
   step: string;
+  // Optional system framing; adapters that have no notion of it prepend it.
+  system?: string;
   prompt: string;
   contextRefs: string[];
 };

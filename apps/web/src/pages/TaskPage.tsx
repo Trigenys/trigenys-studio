@@ -2,7 +2,9 @@ import type { Me, Task } from "@trigenys/studio-contracts";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useDecide, useTask, useTransition, useTransitionHistory } from "../api/queries";
+import { Assistant } from "../components/Assistant";
 import { Comments } from "../components/Comments";
+import { Dossier } from "../components/Dossier";
 import { ErrorState, Loading } from "../components/States";
 import { TaskEditForm } from "../components/TaskEditForm";
 import { VersionForm, VersionHistory } from "../components/VersionEditor";
@@ -107,6 +109,16 @@ export function TaskPage({ me }: { me: Me }) {
             <VersionHistory taskId={t.id} />
           </Collapsible>
         ) : null}
+      </section>
+
+      <section aria-labelledby="dossier-title" className="card">
+        <h2 id="dossier-title">Dossier</h2>
+        <Dossier taskId={t.id} writer={writer && !frozen} />
+      </section>
+
+      <section aria-labelledby="assistant-title" className="card">
+        <h2 id="assistant-title">Assistant</h2>
+        <Assistant taskId={t.id} latestVersion={t.latestVersion} writer={writer} frozen={frozen} />
       </section>
 
       <section aria-labelledby="comments-title" className="card">

@@ -327,3 +327,59 @@ export const idempotencyKey = pgTable(
   },
   (t) => [primaryKey({ columns: [t.key, t.actorId] })],
 );
+
+// ---------------------------------------------------------------------------
+// Editorial dossier: sources attached to a task and audited assistant runs.
+// ---------------------------------------------------------------------------
+
+export const SOURCE_ORIGINS = ["manual", "radar", "cms"] as const;
+export type SourceOrigin = (typeof SOURCE_ORIGINS)[number];
+
+export const taskSource = pgTable(
+  "task_source",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    origin: text("origin").$type<SourceOrigin>().notNull().default("manual"),
+    title: text("title").notNull(),
+    url: text("url"),
+    note: text("note").notNull().default(""),
+    addedBy: text("added_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("task_source_task_idx").on(t.taskId)],
+);
+
+export const AI_ACTIONS = ["propose", "fix", "summarize", "adapt"] as const;
+export type AiAction = (typeof AI_ACTIONS)[number];
+export const AI_INTERACTION_STATUSES = ["proposed", "accepted", "dismissed"] as const;
+export type AiInteractionStatus = (typeof AI_INTERACTION_STATUSES)[number];
+
+// Every assistant run is kept with what it saw (context refs, input hash),
+// what it produced and what became of it. An output only becomes content
+// through an explicit accept, which creates a new content_version.
+export const aiInteraction = pgTable(
+  "ai_interaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    action: text("action").$type<AiAction>().notNull(),
+    channel: text("channel").notNull(),
+    instruction: text("instruction").notNull().default(""),
+    model: text("model").notNull(),
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    contextRefs: jsonb("context_refs").$type<string[]>().notNull().default([]),
+    inputHash: text("input_hash").notNull(),
+    output: text("output").notNull(),
+    tokensIn: integer("tokens_in").notNull().default(0),
+    tokensOut: integer("tokens_out").notNull().default(0),
+    status: text("status").$type<AiInteractionStatus>().notNull().default("proposed"),
+    acceptedVersionId: uuid("accepted_version_id").references(() => contentVersion.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("ai_interaction_task_idx").on(t.taskId)],
+);

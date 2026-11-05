@@ -17,6 +17,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
     "@better-auth/drizzle-adapter": "^1.7.17",
     "@better-auth/passkey": "^1.7.18",
     "@hono/zod-openapi": "^1.6.3",

@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import type { Comment, ContentVersion, Me, Product, Task, TaskDetail, TaskTransition } from "@trigenys/studio-contracts";
+import type { AiInteraction, Comment, ContentVersion, Me, Product, Task, TaskDetail, TaskSource, TaskTransition } from "@trigenys/studio-contracts";
 
 export const me: Me = {
   userId: "u-operator",
@@ -95,6 +95,8 @@ export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, 
     versions: new Map<string, ContentVersion[]>(),
     comments: new Map<string, Comment[]>(),
     history: new Map<string, TaskTransition[]>(),
+    sources: new Map<string, TaskSource[]>(),
+    interactions: new Map<string, AiInteraction[]>(),
   };
   const find = (id: string | undefined) => store.tasks.find((x) => x.id === id);
   const detail = (t: Task) => detailOf(t, store.versions.get(t.id));
@@ -185,6 +187,73 @@ export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, 
       return json(route, 201, c);
     }
     return json(route, 200, list);
+  });
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/sources$/, (route) => {
+    const [, id] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\//)!;
+    const list = store.sources.get(id) ?? [];
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as { title: string; url?: string | null; note?: string };
+      const s: TaskSource = { id: uuid(), taskId: id, origin: "manual", title: body.title, url: body.url ?? null, note: body.note ?? "", addedBy: me.userId, createdAt: stamp() };
+      store.sources.set(id, [...list, s]);
+      return json(route, 201, s);
+    }
+    return json(route, 200, list);
+  });
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/sources\/[0-9a-f-]{36}$/, (route) => {
+    const [, id, sourceId] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\/sources\/([0-9a-f-]{36})$/)!;
+    store.sources.set(id, (store.sources.get(id) ?? []).filter((s) => s.id !== sourceId));
+    return route.fulfill({ status: 204 });
+  });
+
+  // The assistant mirrors the Worker's mock model: the output names the
+  // action, a proposal is inert until accepted, accepting adds a version.
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/assistant$/, (route) => {
+    const [, id] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\//)!;
+    const t = find(id)!;
+    const list = store.interactions.get(id) ?? [];
+    if (route.request().method() === "POST") {
+      if (FROZEN.includes(t.state)) return json(route, 409, problem(409, "Contenu gelé"));
+      const body = route.request().postDataJSON() as { action: AiInteraction["action"]; channel: string; instruction?: string };
+      const latest = detail(t).latestVersion;
+      const i: AiInteraction = {
+        id: uuid(),
+        taskId: id,
+        action: body.action,
+        channel: body.channel,
+        instruction: body.instruction ?? "",
+        model: "mock",
+        actorId: me.userId,
+        contextRefs: [`task:${id}`, ...(latest ? [`version:${latest.id}`] : [])],
+        inputHash: "0".repeat(64),
+        output: body.action === "propose" ? "Insight est disponible.\nEssayez-le dès aujourd'hui." : `${latest?.body ?? ""}\nEn savoir plus sur trigenys.com.`,
+        tokensIn: 10,
+        tokensOut: 5,
+        status: "proposed",
+        acceptedVersionId: null,
+        createdAt: stamp(),
+      };
+      store.interactions.set(id, [i, ...list]);
+      return json(route, 201, i);
+    }
+    return json(route, 200, list);
+  });
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/assistant\/[0-9a-f-]{36}\/(accept|dismiss)$/, (route) => {
+    const [, id, interactionId, verb] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\/assistant\/([0-9a-f-]{36})\/(accept|dismiss)$/)!;
+    const t = find(id)!;
+    const i = (store.interactions.get(id) ?? []).find((x) => x.id === interactionId)!;
+    if (i.status !== "proposed" || (verb === "accept" && FROZEN.includes(t.state))) return json(route, 409, problem(409, "Proposition déjà décidée"));
+    if (verb === "dismiss") {
+      i.status = "dismissed";
+      return json(route, 200, i);
+    }
+    const list = store.versions.get(t.id) ?? (seedVersion(t) ? [seedVersion(t)!] : []);
+    const v: ContentVersion = { id: uuid(), taskId: t.id, n: list.length + 1, channel: i.channel, body: i.output, contentHash: `h${list.length + 1}`, aiAssisted: true, authorId: me.userId, createdAt: stamp() };
+    store.versions.set(t.id, [...list, v]);
+    if (t.state === "awaiting_approval" || t.state === "approved") t.state = "preparing";
+    i.status = "accepted";
+    i.acceptedVersionId = v.id;
+    return json(route, 201, v);
   });
 
   await page.route(/\/tasks\/[0-9a-f-]{36}\/(transitions|approvals)$/, (route) => {
