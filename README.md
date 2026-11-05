@@ -28,6 +28,10 @@ npm run openapi:export -w services/api    # régénère packages/contracts/opena
 npm run generate -w packages/contracts    # régénère le client TypeScript
 ```
 
+### Web en local
+
+`npm run dev` (Vite, port 5173) proxie les routes de l'API vers le Worker sur `localhost:8787` : lancer aussi `npm run dev -w services/api`. « Ma journée » (`/today`, `/review`, `/scheduled`, `/late`) dérive ses vues côté client (`apps/web/src/views.ts`) à partir d'une liste par produit ; l'URL porte la vue, le produit (`?product=`) et la recherche (`?q=`). La session vient de `GET /me` ; la connexion passe par le client Better Auth (lien magique, passkey). En production, `VITE_API_URL` désigne le Worker (vide = même origine). Tests : `npm test -w apps/web` lance Playwright (profils desktop et Pixel 7) contre une API mockée au niveau réseau (`apps/web/e2e/api-mock.ts`), sans base ni Worker. Voir ADR 0005.
+
 ### API en local
 
 `npm run dev -w services/api` démarre le Worker avec wrangler. Les intégrations sont en mode `mock` par défaut (`INTEGRATION_<X>_MODE`). Pour la base, définir `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` sur une branche Neon de développement ; aucune URI n'est commise. La CI vérifie que `openapi.json` et `schema.d.ts` sont à jour par rapport au code.

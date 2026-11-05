@@ -29,6 +29,9 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm run typecheck --workspace apps/web
       - run: npm run build --workspace apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm test --workspace apps/web
 
   contracts:
     needs: impact

@@ -1,0 +1,35 @@
+import type { ApiError } from "../api/client";
+
+export function Loading({ label = "Chargement…" }: { label?: string }) {
+  return (
+    <p className="state state-loading" role="status" aria-live="polite">
+      <span className="spinner" aria-hidden="true" /> {label}
+    </p>
+  );
+}
+
+export function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="state state-empty" role="status">
+      {children}
+    </p>
+  );
+}
+
+export function ErrorState({ error, retry }: { error: ApiError | Error; retry?: () => void }) {
+  const problem = "problem" in error ? error.problem : null;
+  return (
+    <div className="state state-error" role="alert">
+      <p>
+        <strong>{problem?.title ?? "Une erreur est survenue"}</strong>
+        {problem?.detail ? <> — {problem.detail}</> : null}
+        {!problem && error.message ? <> — {error.message}</> : null}
+      </p>
+      {retry ? (
+        <button type="button" className="btn" onClick={retry}>
+          Réessayer
+        </button>
+      ) : null}
+    </div>
+  );
+}
