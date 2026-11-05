@@ -44,11 +44,16 @@ export function DashboardPage({ me }: { me: Me }) {
     <>
       <div className="page-head">
         <h1 className="page-title">Ma journée</h1>
-        {writer ? (
-          <Link to={`/tasks/new${productId ? `?product=${productId}` : ""}`} className="btn btn-primary">
-            Nouvelle tâche
+        <div className="actions">
+          <Link to="/imports" className="btn">
+            Entrées
           </Link>
-        ) : null}
+          {writer ? (
+            <Link to={`/tasks/new${productId ? `?product=${productId}` : ""}`} className="btn btn-primary">
+              Nouvelle tâche
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <nav className="product-filter" aria-label="Produit">

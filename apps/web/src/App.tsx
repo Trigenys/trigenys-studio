@@ -4,6 +4,7 @@ import { useMe } from "./api/queries";
 import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/States";
 import { DashboardPage } from "./pages/Dashboard";
+import { ImportsPage } from "./pages/Imports";
 import { LoginPage } from "./pages/Login";
 import { NewTaskPage } from "./pages/NewTask";
 import { TaskPage } from "./pages/TaskPage";
@@ -26,6 +27,7 @@ function Authenticated() {
     <Shell me={me.data}>
       <Routes>
         <Route index element={<Navigate to="/today" replace />} />
+        <Route path="imports" element={<ImportsPage me={me.data} />} />
         <Route path="tasks/new" element={<NewTaskPage me={me.data} />} />
         <Route path="tasks/:id" element={<TaskPage me={me.data} />} />
         <Route path=":view" element={<DashboardPage me={me.data} />} />

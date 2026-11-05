@@ -383,3 +383,33 @@ export const aiInteraction = pgTable(
   },
   (t) => [index("ai_interaction_task_idx").on(t.taskId)],
 );
+
+export const IMPORT_ORIGINS = ["cms", "radar"] as const;
+export type ImportOrigin = (typeof IMPORT_ORIGINS)[number];
+export const IMPORT_STATUSES = ["new", "linked", "ignored"] as const;
+export type ImportStatus = (typeof IMPORT_STATUSES)[number];
+
+// What the CMS and the radar hand over, one row per (origin, external ref).
+// A sync upserts the description and keeps the decision (status, task):
+// replaying it never duplicates nor resets what an operator did.
+export const importItem = pgTable(
+  "import_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    origin: text("origin").$type<ImportOrigin>().notNull(),
+    externalRef: text("external_ref").notNull(),
+    title: text("title").notNull(),
+    url: text("url"),
+    summary: text("summary").notNull().default(""),
+    sources: jsonb("sources").$type<string[]>().notNull().default([]),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    status: text("status").$type<ImportStatus>().notNull().default("new"),
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "set null" }),
+    decidedBy: text("decided_by").references(() => user.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("import_item_origin_ref_idx").on(t.origin, t.externalRef), index("import_item_status_idx").on(t.status, t.observedAt)],
+);

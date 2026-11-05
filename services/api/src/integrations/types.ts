@@ -22,17 +22,47 @@ export interface Publisher {
   cancel(externalId: string): Promise<void>;
 }
 
+// What Studio reads from the CMS: enough to preview an article and link it
+// to a task without copying its body. `externalRef` is stable across syncs.
 export type CmsArticle = {
   externalRef: string;
+  locale: string;
   title: string;
-  url: string;
-  publishedAt: string;
   excerpt: string;
+  status: "draft" | "published";
+  url: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+};
+
+export type ListQuery = {
+  // Only items changed after this instant (ISO); adapters without such a
+  // filter return the most recent ones and the sync dedupes.
+  since?: string;
+  limit: number;
 };
 
 export interface Cms {
   readonly name: string;
-  listRecent(limit: number): Promise<CmsArticle[]>;
+  listArticles(query: ListQuery): Promise<CmsArticle[]>;
+}
+
+// A topic the radar proposes, with where it came from and when it was seen.
+export type RadarTopic = {
+  externalRef: string;
+  title: string;
+  angle: string | null;
+  format: string | null;
+  vertical: string | null;
+  score: number | null;
+  sources: string[];
+  observedAt: string;
+  updatedAt: string;
+};
+
+export interface Radar {
+  readonly name: string;
+  listProposals(query: ListQuery): Promise<RadarTopic[]>;
 }
 
 export type MetricTarget = { kind: "deliverable" | "url"; ref: string };
@@ -82,6 +112,7 @@ export interface Mailer {
 export type Integrations = {
   publisher: Publisher;
   cms: Cms;
+  radar: Radar;
   metrics: MetricsProvider;
   llm: Llm;
   email: Mailer;

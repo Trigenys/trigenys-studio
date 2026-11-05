@@ -10,9 +10,13 @@ import type {
   CreateContentVersion,
   CreateTask,
   DecideApproval,
+  ImportItem,
+  LinkImport,
   Me,
   Product,
   RequestTransition,
+  SyncImports,
+  SyncReport,
   Task,
   TaskDetail,
   TaskTransition,
@@ -235,5 +239,49 @@ export function useDismissInteraction(id: string) {
     mutationFn: async (interactionId) =>
       unwrap(await api.POST("/tasks/{id}/assistant/{interactionId}/dismiss", { params: { path: { id, interactionId } } })),
     onSuccess: () => void qc.invalidateQueries({ queryKey: dossierKeys.interactions(id) }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Imports (CMS + radar)
+// ---------------------------------------------------------------------------
+
+export type ImportFilters = { origin?: ImportItem["origin"]; status?: ImportItem["status"] };
+export const importKeys = {
+  all: ["imports"] as const,
+  list: (f: ImportFilters) => ["imports", f.origin ?? "all", f.status ?? "all"] as const,
+};
+
+export function useImports(filters: ImportFilters) {
+  return useQuery<ImportItem[], ApiError>({
+    queryKey: importKeys.list(filters),
+    queryFn: async () => unwrap(await api.GET("/imports", { params: { query: filters } })),
+  });
+}
+
+export function useSyncImports() {
+  const qc = useQueryClient();
+  return useMutation<SyncReport, ApiError, SyncImports>({
+    mutationFn: async (body) => unwrap(await api.POST("/imports/sync", { body })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: importKeys.all }),
+  });
+}
+
+export function useLinkImport() {
+  const qc = useQueryClient();
+  return useMutation<ImportItem, ApiError, { id: string; body: LinkImport }>({
+    mutationFn: async ({ id, body }) => unwrap(await api.POST("/imports/{id}/task", { params: { path: { id } }, body, headers: idempotencyKey() })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: importKeys.all });
+      void qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useIgnoreImport() {
+  const qc = useQueryClient();
+  return useMutation<ImportItem, ApiError, string>({
+    mutationFn: async (id) => unwrap(await api.POST("/imports/{id}/ignore", { params: { path: { id } } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: importKeys.all }),
   });
 }

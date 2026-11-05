@@ -25,6 +25,10 @@ export type DecideApproval = components["schemas"]["DecideApproval"];
 export type TaskSource = components["schemas"]["TaskSource"];
 export type CreateTaskSource = components["schemas"]["CreateTaskSource"];
 export type AiInteraction = components["schemas"]["AiInteraction"];
+export type ImportItem = components["schemas"]["ImportItem"];
+export type SyncImports = components["schemas"]["SyncImports"];
+export type SyncReport = components["schemas"]["SyncReport"];
+export type LinkImport = components["schemas"]["LinkImport"];
 export type AssistRequest = components["schemas"]["AssistRequest"];
 
 // Typed HTTP client shared by the web app (cookie session) and tooling.

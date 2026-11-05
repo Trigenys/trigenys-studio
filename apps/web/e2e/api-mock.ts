@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import type { AiInteraction, Comment, ContentVersion, Me, Product, Task, TaskDetail, TaskSource, TaskTransition } from "@trigenys/studio-contracts";
+import type { AiInteraction, Comment, ContentVersion, ImportItem, Me, Product, Task, TaskDetail, TaskSource, TaskTransition } from "@trigenys/studio-contracts";
 
 export const me: Me = {
   userId: "u-operator",
@@ -82,16 +82,42 @@ export const detailOf = (t: Task, versions: ContentVersion[] = []): TaskDetail =
   };
 };
 
-type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number };
+type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean };
+
+// What a sync brings in: one CMS article and one radar topic, as received.
+export const incomingImports: Omit<ImportItem, "id" | "status" | "taskId" | "decidedBy" | "decidedAt" | "firstSeenAt" | "syncedAt">[] = [
+  {
+    origin: "cms",
+    externalRef: "12:fr",
+    title: "Neon vs Supabase",
+    url: "https://insight.example/fr/posts/neon-vs-supabase",
+    summary: "Comparatif des offres gratuites.",
+    sources: ["https://insight.example/fr/posts/neon-vs-supabase"],
+    payload: { locale: "fr", status: "published" },
+    observedAt: "2026-03-01T08:00:00.000Z",
+  },
+  {
+    origin: "radar",
+    externalRef: "run-1",
+    title: "Les LLM en PME",
+    url: null,
+    summary: "Coût réel d'un assistant interne. Format proposé : analysis",
+    sources: ["https://source.example/llm"],
+    payload: { angle: "Coût réel", format: "analysis", vertical: "insight", score: 81.5 },
+    observedAt: "2026-02-01T00:00:00.000Z",
+  },
+];
 
 const problem = (status: number, title: string) => ({ type: "about:blank", title, status });
 
 // Intercepts every API call the app makes with an in-memory store per page,
 // mirroring the Worker's rules the UI relies on: product filtering, frozen
 // content, optimistic version on updates, transitions recorded in history.
-export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, updateStatus = 200 }: Options = {}) {
+export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false }: Options = {}) {
+  const whoami: Me = reviewerOnly ? { ...me, grants: [{ role: "reviewer", productId: null }] } : me;
   const store = {
     tasks: tasks.map((t) => ({ ...t })),
+    imports: [] as ImportItem[],
     versions: new Map<string, ContentVersion[]>(),
     comments: new Map<string, Comment[]>(),
     history: new Map<string, TaskTransition[]>(),
@@ -108,7 +134,55 @@ export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, 
       ? route.continue() // a page navigation such as /tasks/<id>: let Vite serve the SPA
       : route.fulfill({ status, contentType: status >= 400 ? "application/problem+json" : "application/json", body: JSON.stringify(body) });
 
-  await page.route("**/me", (route) => (signedIn ? json(route, 200, me) : json(route, 401, problem(401, "No valid session"))));
+  await page.route("**/me", (route) => (signedIn ? json(route, 200, whoami) : json(route, 401, problem(401, "No valid session"))));
+
+  await page.route(/\/imports(\?.*)?$/, (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    return json(
+      route,
+      200,
+      store.imports.filter((i) => (!q.get("origin") || i.origin === q.get("origin")) && (!q.get("status") || i.status === q.get("status"))),
+    );
+  });
+  await page.route("**/imports/sync", (route) => {
+    let created = 0;
+    for (const inc of incomingImports) {
+      if (store.imports.some((i) => i.origin === inc.origin && i.externalRef === inc.externalRef)) continue;
+      store.imports.push({ ...inc, id: uuid(), status: "new", taskId: null, decidedBy: null, decidedAt: null, firstSeenAt: stamp(), syncedAt: stamp() });
+      created += 1;
+    }
+    return json(route, 200, {
+      origins: (["cms", "radar"] as const).map((origin) => ({ origin, fetched: 1, created: created ? 1 : 0, updated: created ? 0 : 1 })),
+    });
+  });
+  await page.route(/\/imports\/[0-9a-f-]{36}\/(task|ignore)$/, (route) => {
+    const [, id, action] = route.request().url().match(/\/imports\/([0-9a-f-]{36})\/(task|ignore)$/)!;
+    const item = store.imports.find((i) => i.id === id)!;
+    if (item.status !== "new") return json(route, 409, problem(409, `Item already ${item.status}`));
+    if (action === "task") {
+      const body = route.request().postDataJSON() as { productId: string; type?: string };
+      const t: Task = {
+        id: uuid(),
+        productId: body.productId,
+        type: body.type ?? "post",
+        title: item.title,
+        brief: item.summary,
+        state: "qualifying",
+        priority: 0,
+        dueAt: null,
+        assigneeId: me.userId,
+        createdBy: me.userId,
+        version: 1,
+        createdAt: stamp(),
+        updatedAt: stamp(),
+      };
+      store.tasks.push(t);
+      Object.assign(item, { status: "linked", taskId: t.id, decidedBy: me.userId, decidedAt: stamp() });
+      return json(route, 201, item);
+    }
+    Object.assign(item, { status: "ignored", decidedBy: me.userId, decidedAt: stamp() });
+    return json(route, 200, item);
+  });
   await page.route("**/products", (route) => json(route, 200, products));
 
   await page.route("**/tasks?**", (route) => {
