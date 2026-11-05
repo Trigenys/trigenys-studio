@@ -21,3 +21,24 @@ export function problem(status: number, title: string, extra: Partial<Problem> =
     headers: { "content-type": "application/problem+json" },
   });
 }
+
+// Thrown from typed route handlers (whose return type is fixed by the route
+// contract); the app-level error handler turns it into a problem document.
+export class ProblemError extends Error {
+  readonly status: number;
+  readonly title: string;
+  readonly extra: Partial<Problem>;
+
+  // No parameter properties: scripts run through Node's type stripping.
+  constructor(status: number, title: string, extra: Partial<Problem> = {}) {
+    super(title);
+    this.name = "ProblemError";
+    this.status = status;
+    this.title = title;
+    this.extra = extra;
+  }
+
+  toResponse(instance: string): Response {
+    return problem(this.status, this.title, { instance, ...this.extra });
+  }
+}

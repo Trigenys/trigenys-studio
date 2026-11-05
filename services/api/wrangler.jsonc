@@ -14,7 +14,12 @@
     "INTEGRATION_PUBLISHER_MODE": "mock",
     "INTEGRATION_CMS_MODE": "mock",
     "INTEGRATION_METRICS_MODE": "mock",
-    "INTEGRATION_LLM_MODE": "mock"
+    "INTEGRATION_LLM_MODE": "mock",
+    "INTEGRATION_EMAIL_MODE": "mock",
+    // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).
+    "AUTH_BASE_URL": "http://localhost:8787",
+    "AUTH_TRUSTED_ORIGINS": "http://localhost:5173",
+    "PASSKEY_RP_NAME": "Trigenys Studio"
   },
   // The Hyperdrive id is provisioned by AppFactory (contribution U1, appfactory#185).
   // Locally, set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE to a dev branch URI.

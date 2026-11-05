@@ -1,7 +1,15 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { cors } from "hono/cors";
+import { AuthConfigError, authConfigFromEnv, createAuth, type AuthConfig } from "./auth/auth.ts";
+import { sessionMiddleware } from "./auth/middleware.ts";
+import { createDb, type Db } from "./db/client.ts";
 import type { AppEnv } from "./env.ts";
-import { ProblemSchema, problem } from "./problem.ts";
+import { createIntegrations } from "./integrations/registry.ts";
+import type { Integrations } from "./integrations/types.ts";
+import { ProblemError, ProblemSchema, problem } from "./problem.ts";
 import { healthRoutes } from "./routes/health.ts";
+import { meRoutes } from "./routes/me.ts";
+import { roleRoutes } from "./routes/roles.ts";
 import { VERSION } from "./version.ts";
 
 export const openApiInfo = {
@@ -9,12 +17,25 @@ export const openApiInfo = {
   info: {
     title: "Trigenys Studio API",
     version: VERSION,
-    description: "Cockpit de production et de communication Trigenys.",
+    description:
+      "Cockpit de production et de communication Trigenys. " +
+      "L'authentification (passkeys, magic link, bearer) est servie par Better Auth sous /api/auth/* ; " +
+      "ses routes sont documentées par Better Auth et ne figurent pas dans ce contrat.",
   },
-  tags: [{ name: "system", description: "État du service" }],
+  tags: [
+    { name: "system", description: "État du service" },
+    { name: "identity", description: "Utilisateur courant et rôles" },
+  ],
 };
 
-export function createApp() {
+// Dependencies a test (or another host) may inject instead of the Worker bindings.
+export type AppDeps = {
+  db?: Db;
+  integrations?: Partial<Integrations>;
+  authConfig?: AuthConfig;
+};
+
+export function createApp(deps: AppDeps = {}) {
   const app = new OpenAPIHono<AppEnv>({
     defaultHook: (result, c) => {
       if (result.success) return;
@@ -26,14 +47,66 @@ export function createApp() {
   });
 
   app.openAPIRegistry.register("Problem", ProblemSchema);
-  app.route("/", healthRoutes);
-  app.doc31("/openapi.json", openApiInfo);
+  app.openAPIRegistry.registerComponent("securitySchemes", "cookieAuth", {
+    type: "apiKey",
+    in: "cookie",
+    name: "better-auth.session_token",
+  });
+  app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", { type: "http", scheme: "bearer" });
 
   app.notFound((c) => problem(404, "Not found", { instance: c.req.path }));
   app.onError((err, c) => {
+    if (err instanceof ProblemError) return err.toResponse(c.req.path);
+    if (err instanceof AuthConfigError) {
+      console.error(err.name, err.message);
+      return problem(503, "Authentication not configured", { instance: c.req.path, detail: err.message });
+    }
     console.error(err.name, err.message);
     return problem(500, "Internal error", { instance: c.req.path });
   });
+
+  // Public, dependency-free routes first.
+  app.route("/", healthRoutes);
+  app.doc31("/openapi.json", openApiInfo);
+
+  // Everything below needs the database, the auth instance and the session.
+  // Unmatched paths skip the setup so they reach notFound instead of a 503.
+  app.use("*", async (c, next) => {
+    const routed = c.req.matchedRoutes.some((r) => r.path !== "*" && r.path !== "/*");
+    if (!routed) return next();
+    c.set("requestId", c.req.header("cf-ray") ?? crypto.randomUUID());
+    const integrations = createIntegrations(c.env, deps.integrations);
+    c.set("integrations", integrations);
+    const db = deps.db ?? (c.env.HYPERDRIVE ? createDb(c.env.HYPERDRIVE.connectionString) : null);
+    if (!db) throw new AuthConfigError("HYPERDRIVE binding is required for authenticated routes");
+    c.set("db", db);
+    const config = deps.authConfig ?? authConfigFromEnv(c.env);
+    c.set("auth", createAuth(db, integrations.email, config));
+    await next();
+  });
+
+  app.use(
+    "*",
+    cors({
+      origin: (origin, c) => {
+        try {
+          const config = deps.authConfig ?? authConfigFromEnv(c.env);
+          return config.trustedOrigins.includes(origin) ? origin : null;
+        } catch {
+          return null;
+        }
+      },
+      credentials: true,
+      allowHeaders: ["content-type", "authorization"],
+      exposeHeaders: ["set-auth-token"],
+    }),
+  );
+
+  app.on(["GET", "POST"], "/api/auth/*", (c) => c.var.auth.handler(c.req.raw));
+
+  app.use("*", sessionMiddleware);
+  app.route("/", meRoutes);
+  app.route("/", roleRoutes);
 
   return app;
 }
