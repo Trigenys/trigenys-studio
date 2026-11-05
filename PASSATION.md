@@ -124,3 +124,23 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Cause : `getByRole("status")` ambigu sur mobile (rapport de synchro + état vide encore monté) et `getByLabel("Produit")` qui attrape la nav du tableau de bord pendant la transition. Correction : `filter({ hasText })` et `getByRole("combobox", { name })`. Leçon : viser le rôle précis dès qu'un libellé est partagé entre une nav et un champ.
 - Dépôt GitHub = `Trigenys/trigenys-studio` (pas EagleFox31) : les logs de job se lisent via `gh api --allow-escape-sequences repos/Trigenys/trigenys-studio/actions/jobs/<id>/logs`.
 - Suite : merge #32 dès CI verte, puis incrément 11 = #8 (pipeline visuel et brand kits).
+
+## 2026-11-05 20:51 — Incrément 11 (#8) : plan architecte reçu, implémentation démarre
+
+- PR #32 : fix e2e poussé (commit test(web)), CI en cours ; merge squash dès verte. Branche de travail `feat/visuals-brand-kits` créée depuis le tip de #32 (à rebaser sur main après le squash : `git rebase --onto origin/main feat/imports-cms-radar`).
+- Plan retenu : moteur SVG déterministe `svg@1` (Adapt de la route OG satori de Trigenys-Insight, sans wasm), interface `VisualRenderer` ; `MediaStore` (R2 `VISUALS` en live, mémoire en test, `INTEGRATION_MEDIA_MODE`) ; tables `visual_format` (seed 4 formats, migration custom), `brand_kit` (versionné, un seul approved par produit, logo hashé, kit_hash), `visual_asset` (dédup content_hash actif, variantes, discard logique) ; `assetSetHashOf` réel (jeu vide = sha256("[]") conservé) ; routes `/visual-formats`, `/products/{id}/brand-kits`, `/brand-kits/{id}/approve|logo`, `/tasks/{id}/visuals`, `/visuals/{id}/file` ; web : page BrandKits (admin) + section Visuels sur TaskPage ; ADR 0008.
+- Ordre : schéma/migrations → renderer+canonical → MediaStore/registry/harness → engine → routes+tests → contrats → web+e2e → ADR/PR.
+
+## 2026-11-05 22:25 — Incrément 11 (#8) implémenté : visuels et kits de marque, vérification en cours
+
+- API : migrations `0005_visuals` (visual_format, brand_kit, visual_asset) + `0006_seed_visual_formats` (article, linkedin, instagram, story) ; `visuals/canonical.ts`, `visuals/svg-renderer.ts` (`svg@1` déterministe), `visuals/brand-kit.ts` (logo ≤ 256 Ko, signature SVG/PNG, `kit_hash`) ; `MediaStore` (`MemoryMediaStore` en mock/tests, `R2MediaStore` sur binding `VISUALS`, `INTEGRATION_MEDIA_MODE`) ; routes `brand-kits.ts` (formats, kits, approve, logo) et `visuals.ts` (render, list, discard, file) ; `assetSetHashOf` réel (jeu vide = sha256("[]")). Tests API 91/91.
+- Pièges rencontrés : jsonb réordonne les clés → comparer via `stableStringify` pour l'idempotence des formats ; la variante alimente le schéma de couleurs → la dédup rerend à la variante de chaque actif actif du format.
+- Web : hooks `useVisualFormats/useBrandKits/useCreateBrandKit/useApproveBrandKit/useTaskVisuals/useRenderVisual/useDiscardVisual/useBlobUrl` (images derrière la session via object URL + `credentials: include`), `VisualsSection.tsx` dans TaskPage (après Dossier), page `/brand-kits` admin + lien depuis Ma journée. Mock e2e : options `admin`, `approvedKit` ; specs `visuals.spec.ts`, `brand-kits.spec.ts`, 2 contrôles axe. Rappel : `ul` imbriqué (palette) → `list.locator(":scope > li")`.
+- Docs : ADR 0008, table secrets `docs/operations.md` (binding `VISUALS`).
+- Reste : pass de vérification complète (agent), commit, PR « Closes #8 » avec RAIDER review, CI, puis merge sur « ok ». Suivi hors périmètre : renderer PNG, alignement impact/release sur le SHA registry 8847e488.
+
+## 2026-11-05 22:34 — Incrément 11 : vérification complète verte, commit et PR
+
+- Preuves : API tsc + vitest 91/91, dry-run ok, openapi:check + contrats ok, web tsc + build ok, Playwright 68/68 (desktop + Pixel 7, axe inclus).
+- Leçon (même famille que LESSON « getByLabel sous-chaîne ») : « Sous-titre » matche `getByLabel("Titre")` → libellé renommé « Accroche (facultatif) ». Tout nouveau champ sur TaskPage doit éviter de contenir un libellé existant.
+- Suite : commit sur `feat/visuals-brand-kits`, PR « Closes #8 » avec RAIDER review, CI, merge squash sur « ok » du propriétaire, puis incrément suivant du backlog.

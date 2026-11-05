@@ -30,6 +30,13 @@ export type SyncImports = components["schemas"]["SyncImports"];
 export type SyncReport = components["schemas"]["SyncReport"];
 export type LinkImport = components["schemas"]["LinkImport"];
 export type AssistRequest = components["schemas"]["AssistRequest"];
+export type VisualFormat = components["schemas"]["VisualFormat"];
+export type UpsertVisualFormat = components["schemas"]["UpsertVisualFormat"];
+export type BrandKit = components["schemas"]["BrandKit"];
+export type BrandPalette = components["schemas"]["BrandPalette"];
+export type CreateBrandKit = components["schemas"]["CreateBrandKit"];
+export type VisualAsset = components["schemas"]["VisualAsset"];
+export type RenderVisual = components["schemas"]["RenderVisual"];
 
 // Typed HTTP client shared by the web app (cookie session) and tooling.
 // Mobile clients are generated from openapi.json with openapi-generator (Kotlin).

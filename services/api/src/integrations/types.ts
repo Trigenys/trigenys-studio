@@ -109,6 +109,16 @@ export interface Mailer {
   send(mail: Mail): Promise<void>;
 }
 
+export type MediaObject = { bytes: Uint8Array; mime: string };
+
+// Content-addressed object storage for logos and rendered visuals. Keys are
+// chosen by the API (never by a client); a put of the same key is idempotent.
+export interface MediaStore {
+  readonly name: string;
+  put(key: string, bytes: Uint8Array, mime: string): Promise<void>;
+  get(key: string): Promise<MediaObject | null>;
+}
+
 export type Integrations = {
   publisher: Publisher;
   cms: Cms;
@@ -116,4 +126,5 @@ export type Integrations = {
   metrics: MetricsProvider;
   llm: Llm;
   email: Mailer;
+  media: MediaStore;
 };

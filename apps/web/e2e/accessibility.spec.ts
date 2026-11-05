@@ -32,3 +32,19 @@ test("task page has no serious accessibility violation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Approuver" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });
+
+test("brand kits page has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page, { admin: true });
+  await page.goto("/brand-kits");
+  await expect(page.getByRole("list", { name: "Kits" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
+test("task page with a rendered visual has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page);
+  await page.goto(`/tasks/${tasks[0]!.id}`);
+  const section = page.getByRole("region", { name: "Visuels" });
+  await section.getByRole("button", { name: "Rendre le visuel" }).click();
+  await expect(section.getByRole("img")).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});

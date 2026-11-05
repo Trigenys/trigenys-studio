@@ -11,7 +11,9 @@ import { healthRoutes } from "./routes/health.ts";
 import { meRoutes } from "./routes/me.ts";
 import { productRoutes } from "./routes/products.ts";
 import { roleRoutes } from "./routes/roles.ts";
+import { brandKitRoutes } from "./routes/brand-kits.ts";
 import { importRoutes } from "./routes/imports.ts";
+import { visualRoutes } from "./routes/visuals.ts";
 import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { VERSION } from "./version.ts";
@@ -32,6 +34,7 @@ export const openApiInfo = {
     { name: "pipeline", description: "Produits, tâches, contenus, transitions et approbations" },
     { name: "dossier", description: "Sources et assistant contextualisé d'une tâche" },
     { name: "imports", description: "Entrées reçues du CMS Insight et du radar Editorial OS" },
+    { name: "visuals", description: "Formats, kits de marque et visuels rendus côté serveur" },
   ],
 };
 
@@ -118,6 +121,8 @@ export function createApp(deps: AppDeps = {}) {
   app.route("/", taskRoutes);
   app.route("/", dossierRoutes);
   app.route("/", importRoutes);
+  app.route("/", brandKitRoutes);
+  app.route("/", visualRoutes);
 
   return app;
 }

@@ -36,6 +36,20 @@
       "when": 1793906812575,
       "tag": "0004_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793908374149,
+      "tag": "0005_visuals",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793908402228,
+      "tag": "0006_seed_visual_formats",
+      "breakpoints": true
     }
   ]
 }

@@ -1,18 +1,22 @@
 import { and, desc, eq } from "drizzle-orm";
 import { decide, type Decision, type Principal, type Resource } from "../auth/rbac.ts";
 import type { Db, Tx } from "../db/client.ts";
-import { approval, contentVersion, task, taskTransition, type TaskState } from "../db/schema.ts";
+import { approval, contentVersion, task, taskTransition, visualAsset, type TaskState } from "../db/schema.ts";
+import { stableStringify } from "../visuals/canonical.ts";
 import { pipelineDefinition, type Guard, type TransitionRule } from "./definition.ts";
 
 export type TaskRow = typeof task.$inferSelect;
 export type ContentVersionRow = typeof contentVersion.$inferSelect;
 export type ApprovalRow = typeof approval.$inferSelect;
+export type VisualAssetRow = typeof visualAsset.$inferSelect;
 
 // What the engine needs to know about a task to decide anything.
 export type TaskSnapshot = {
   task: TaskRow;
   latestVersion: ContentVersionRow | null;
   latestApproval: ApprovalRow | null;
+  // Active visual assets, in a stable order: part of what an approval binds.
+  assets: VisualAssetRow[];
 };
 
 export async function sha256(text: string): Promise<string> {
@@ -20,9 +24,11 @@ export async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Assets arrive in a later increment; until then the set is empty and its
-// hash is stable, so approvals already bind both dimensions.
-export const assetSetHashOf = (_snapshot: TaskSnapshot): Promise<string> => sha256("[]");
+// The asset set hash binds an approval to the exact visuals (format, bytes,
+// brand kit) the task carried: a render, a discard or a new kit changes it.
+// An empty set hashes "[]", the value approvals carried before visuals existed.
+export const assetSetHashOf = (s: TaskSnapshot): Promise<string> =>
+  sha256(stableStringify(s.assets.map((a) => [a.formatId, a.contentHash, a.brandKitHash]).sort()));
 
 export async function loadSnapshot(db: Db | Tx, taskId: string, lock = false): Promise<TaskSnapshot | null> {
   const query = db.select().from(task).where(eq(task.id, taskId));
@@ -40,7 +46,12 @@ export async function loadSnapshot(db: Db | Tx, taskId: string, lock = false): P
     .where(eq(approval.taskId, taskId))
     .orderBy(desc(approval.createdAt))
     .limit(1);
-  return { task: row, latestVersion: latestVersion ?? null, latestApproval: latestApproval ?? null };
+  const assets = await db
+    .select()
+    .from(visualAsset)
+    .where(and(eq(visualAsset.taskId, taskId), eq(visualAsset.status, "active")))
+    .orderBy(visualAsset.formatId, visualAsset.variant);
+  return { task: row, latestVersion: latestVersion ?? null, latestApproval: latestApproval ?? null, assets };
 }
 
 // An approval is valid when it was granted on exactly the content and asset

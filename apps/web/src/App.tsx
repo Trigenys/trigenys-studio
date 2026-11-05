@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { useMe } from "./api/queries";
 import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/States";
+import { BrandKitsPage } from "./pages/BrandKits";
 import { DashboardPage } from "./pages/Dashboard";
 import { ImportsPage } from "./pages/Imports";
 import { LoginPage } from "./pages/Login";
@@ -28,6 +29,7 @@ function Authenticated() {
       <Routes>
         <Route index element={<Navigate to="/today" replace />} />
         <Route path="imports" element={<ImportsPage me={me.data} />} />
+        <Route path="brand-kits" element={<BrandKitsPage me={me.data} />} />
         <Route path="tasks/new" element={<NewTaskPage me={me.data} />} />
         <Route path="tasks/:id" element={<TaskPage me={me.data} />} />
         <Route path=":view" element={<DashboardPage me={me.data} />} />

@@ -2,6 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AiInteraction,
   AssistRequest,
+  BrandKit,
+  CreateBrandKit,
+  RenderVisual,
+  VisualAsset,
+  VisualFormat,
   CreateTaskSource,
   TaskSource,
   Comment,
@@ -22,7 +27,8 @@ import type {
   TaskTransition,
   UpdateTask,
 } from "@trigenys/studio-contracts";
-import { ApiError, api, idempotencyKey, unwrap } from "./client";
+import { useEffect } from "react";
+import { API_URL, ApiError, api, idempotencyKey, unwrap } from "./client";
 
 export const keys = {
   me: ["me"] as const,
@@ -284,4 +290,92 @@ export function useIgnoreImport() {
     mutationFn: async (id) => unwrap(await api.POST("/imports/{id}/ignore", { params: { path: { id } } })),
     onSuccess: () => void qc.invalidateQueries({ queryKey: importKeys.all }),
   });
+}
+
+// Visuals: formats are global, kits belong to a product, renders to a task.
+export const visualKeys = {
+  formats: ["visual-formats"] as const,
+  kits: (productId: string) => ["brand-kits", productId] as const,
+  visuals: (taskId: string) => ["task", taskId, "visuals"] as const,
+  blob: (path: string) => ["blob", path] as const,
+};
+
+export function useVisualFormats() {
+  return useQuery<VisualFormat[], ApiError>({
+    queryKey: visualKeys.formats,
+    queryFn: async () => unwrap(await api.GET("/visual-formats")),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useBrandKits(productId: string) {
+  return useQuery<BrandKit[], ApiError>({
+    queryKey: visualKeys.kits(productId),
+    queryFn: async () => unwrap(await api.GET("/products/{productId}/brand-kits", { params: { path: { productId } } })),
+  });
+}
+
+export function useCreateBrandKit(productId: string) {
+  const qc = useQueryClient();
+  return useMutation<BrandKit, ApiError, CreateBrandKit>({
+    mutationFn: async (body) => unwrap(await api.POST("/products/{productId}/brand-kits", { params: { path: { productId } }, body, headers: idempotencyKey() })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: visualKeys.kits(productId) }),
+  });
+}
+
+export function useApproveBrandKit(productId: string) {
+  const qc = useQueryClient();
+  return useMutation<BrandKit, ApiError, string>({
+    mutationFn: async (id) => unwrap(await api.POST("/brand-kits/{id}/approve", { params: { path: { id } } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: visualKeys.kits(productId) }),
+  });
+}
+
+export function useTaskVisuals(taskId: string) {
+  return useQuery<VisualAsset[], ApiError>({
+    queryKey: visualKeys.visuals(taskId),
+    queryFn: async () => unwrap(await api.GET("/tasks/{id}/visuals", { params: { path: { id: taskId } } })),
+  });
+}
+
+export function useRenderVisual(taskId: string) {
+  const qc = useQueryClient();
+  return useMutation<VisualAsset, ApiError, RenderVisual>({
+    mutationFn: async (body) => unwrap(await api.POST("/tasks/{id}/visuals", { params: { path: { id: taskId } }, body, headers: idempotencyKey() })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: visualKeys.visuals(taskId) });
+      void qc.invalidateQueries({ queryKey: keys.task(taskId) }); // a render may send the task back
+    },
+  });
+}
+
+export function useDiscardVisual(taskId: string) {
+  const qc = useQueryClient();
+  return useMutation<VisualAsset, ApiError, string>({
+    mutationFn: async (visualId) => unwrap(await api.DELETE("/tasks/{id}/visuals/{visualId}", { params: { path: { id: taskId, visualId } } })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: visualKeys.visuals(taskId) });
+      void qc.invalidateQueries({ queryKey: keys.task(taskId) });
+    },
+  });
+}
+
+// Images served behind the session cookie: fetched with credentials and
+// shown through an object URL, so <img> never needs cross-origin cookies.
+// Content-addressed files never change: cache them for the session.
+export function useBlobUrl(path: string | null) {
+  const query = useQuery<string, ApiError>({
+    queryKey: visualKeys.blob(path ?? ""),
+    enabled: path !== null,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 10 * 60_000,
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}${path}`, { credentials: "include" });
+      if (!res.ok) throw new ApiError(res.status, null);
+      return URL.createObjectURL(await res.blob());
+    },
+  });
+  const url = query.data;
+  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
+  return query;
 }

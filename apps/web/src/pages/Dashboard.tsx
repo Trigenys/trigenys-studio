@@ -48,6 +48,11 @@ export function DashboardPage({ me }: { me: Me }) {
           <Link to="/imports" className="btn">
             Entrées
           </Link>
+          {me.grants.some((g) => g.role === "admin") ? (
+            <Link to="/brand-kits" className="btn">
+              Kits de marque
+            </Link>
+          ) : null}
           {writer ? (
             <Link to={`/tasks/new${productId ? `?product=${productId}` : ""}`} className="btn btn-primary">
               Nouvelle tâche

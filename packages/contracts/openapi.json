@@ -25,6 +25,10 @@
     {
       "name": "imports",
       "description": "Entrées reçues du CMS Insight et du radar Editorial OS"
+    },
+    {
+      "name": "visuals",
+      "description": "Formats, kits de marque et visuels rendus côté serveur"
     }
   ],
   "components": {
@@ -414,6 +418,9 @@
               "approvalValid": {
                 "type": "boolean"
               },
+              "currentAssetSetHash": {
+                "type": "string"
+              },
               "allowedTransitions": {
                 "type": "array",
                 "items": {
@@ -439,6 +446,7 @@
               "latestVersion",
               "latestApproval",
               "approvalValid",
+              "currentAssetSetHash",
               "allowedTransitions"
             ]
           }
@@ -1241,6 +1249,469 @@
         },
         "required": [
           "productId"
+        ]
+      },
+      "VisualFormat": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 64,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 64,
+            "maximum": 4096
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "layout": {
+            "$ref": "#/components/schemas/VisualLayout"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "width",
+          "height",
+          "channel",
+          "layout",
+          "active",
+          "updatedAt"
+        ]
+      },
+      "VisualLayout": {
+        "type": "object",
+        "properties": {
+          "padding": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 400
+          },
+          "titleSize": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 400
+          },
+          "subtitleSize": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 300
+          },
+          "logoHeight": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 600
+          },
+          "logoPosition": {
+            "type": "string",
+            "enum": [
+              "top-left",
+              "top-right",
+              "bottom-left",
+              "bottom-right"
+            ]
+          },
+          "titleMaxLines": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          }
+        },
+        "required": [
+          "padding",
+          "titleSize",
+          "subtitleSize",
+          "logoHeight",
+          "logoPosition",
+          "titleMaxLines"
+        ]
+      },
+      "UpsertVisualFormat": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 64,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 64,
+            "maximum": 4096
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "layout": {
+            "$ref": "#/components/schemas/VisualLayout"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "width",
+          "height",
+          "layout"
+        ]
+      },
+      "BrandKit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "approved",
+              "retired"
+            ]
+          },
+          "palette": {
+            "$ref": "#/components/schemas/BrandPalette"
+          },
+          "fontFamily": {
+            "type": "string"
+          },
+          "defaultTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mentions": {
+            "type": "string"
+          },
+          "logoMime": {
+            "type": "string"
+          },
+          "logoHash": {
+            "type": "string"
+          },
+          "logoBytes": {
+            "type": "integer"
+          },
+          "kitHash": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "approvedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approvedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retiredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "n",
+          "name",
+          "status",
+          "palette",
+          "fontFamily",
+          "defaultTitle",
+          "mentions",
+          "logoMime",
+          "logoHash",
+          "logoBytes",
+          "kitHash",
+          "createdBy",
+          "createdAt",
+          "approvedBy",
+          "approvedAt",
+          "retiredAt"
+        ]
+      },
+      "BrandPalette": {
+        "type": "object",
+        "properties": {
+          "primary": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "secondary": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "background": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "text": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "accent": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "required": [
+          "primary",
+          "secondary",
+          "background",
+          "text"
+        ]
+      },
+      "CreateBrandKit": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "palette": {
+            "$ref": "#/components/schemas/BrandPalette"
+          },
+          "fontFamily": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "default": "Inter, Arial, sans-serif"
+          },
+          "defaultTitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "default": null
+          },
+          "mentions": {
+            "type": "string",
+            "maxLength": 200,
+            "default": ""
+          },
+          "logo": {
+            "type": "object",
+            "properties": {
+              "mime": {
+                "type": "string",
+                "enum": [
+                  "image/svg+xml",
+                  "image/png"
+                ]
+              },
+              "base64": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 349530
+              }
+            },
+            "required": [
+              "mime",
+              "base64"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "palette",
+          "logo"
+        ]
+      },
+      "VisualAsset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formatId": {
+            "type": "string"
+          },
+          "brandKitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "brandKitHash": {
+            "type": "string"
+          },
+          "contentVersionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "brief": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "integer"
+          },
+          "renderer": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "byteSize": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "discarded"
+            ]
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "discardedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discardedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "taskId",
+          "formatId",
+          "brandKitId",
+          "brandKitHash",
+          "contentVersionId",
+          "title",
+          "subtitle",
+          "brief",
+          "variant",
+          "renderer",
+          "mime",
+          "width",
+          "height",
+          "contentHash",
+          "byteSize",
+          "status",
+          "createdBy",
+          "createdAt",
+          "discardedBy",
+          "discardedAt"
+        ]
+      },
+      "RenderVisual": {
+        "type": "object",
+        "properties": {
+          "formatId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 300,
+            "default": ""
+          },
+          "brief": {
+            "type": "string",
+            "maxLength": 2000,
+            "default": ""
+          }
+        },
+        "required": [
+          "formatId"
         ]
       }
     },
@@ -3873,6 +4344,883 @@
           },
           "409": {
             "description": "Item already linked to a task",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/visual-formats": {
+      "get": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Visual formats (sizes and layouts) available for rendering",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "inactive"
+              ]
+            },
+            "required": false,
+            "name": "include",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Formats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VisualFormat"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/visual-formats/{id}": {
+      "put": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Create or update a visual format (admin, audited, converges: no write when nothing changes)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVisualFormat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Format as stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisualFormat"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Format created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisualFormat"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{productId}/brand-kits": {
+      "get": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Brand kits of a product, newest first",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "productId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandKit"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed on this product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Add a draft brand kit with its logo (admin, audited, Idempotency-Key)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "productId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Replays an identical request"
+            },
+            "required": false,
+            "description": "Replays an identical request",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBrandKit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft kit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKit"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Logo too large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Logo is not a valid file of the declared type, or Idempotency-Key reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/brand-kits/{id}/approve": {
+      "post": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Approve a draft kit; the previously approved kit of the product is retired (admin, audited)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved kit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown brand kit",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Kit is retired",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/brand-kits/{id}/logo": {
+      "get": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Logo bytes of a kit",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logo",
+            "content": {
+              "image/svg+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown brand kit or logo missing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/visuals": {
+      "get": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Visual assets of a task (active by default)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "discarded"
+              ]
+            },
+            "required": false,
+            "name": "include",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visuals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VisualAsset"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown task",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Render a visual from the approved brand kit; invalidates a pending or granted approval (audited, Idempotency-Key)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Replays an identical request"
+            },
+            "required": false,
+            "description": "Replays an identical request",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderVisual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Identical visual already active (same bytes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisualAsset"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Rendered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisualAsset"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown task",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No approved brand kit, task frozen, or logo integrity failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown or inactive format, or Idempotency-Key reused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Media store not configured",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/visuals/{visualId}": {
+      "delete": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Discard a visual (kept for history); invalidates a pending or granted approval (audited)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visualId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Discarded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisualAsset"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown task or visual",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task frozen",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/visuals/{id}/file": {
+      "get": {
+        "tags": [
+          "visuals"
+        ],
+        "summary": "Bytes of a visual (immutable, content-addressed)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image",
+            "content": {
+              "image/svg+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown visual or bytes missing",
             "content": {
               "application/problem+json": {
                 "schema": {

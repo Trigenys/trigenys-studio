@@ -1,5 +1,19 @@
 import type { Page, Route } from "@playwright/test";
-import type { AiInteraction, Comment, ContentVersion, ImportItem, Me, Product, Task, TaskDetail, TaskSource, TaskTransition } from "@trigenys/studio-contracts";
+import type {
+  AiInteraction,
+  BrandKit,
+  Comment,
+  ContentVersion,
+  ImportItem,
+  Me,
+  Product,
+  Task,
+  TaskDetail,
+  TaskSource,
+  TaskTransition,
+  VisualAsset,
+  VisualFormat,
+} from "@trigenys/studio-contracts";
 
 export const me: Me = {
   userId: "u-operator",
@@ -78,11 +92,43 @@ export const detailOf = (t: Task, versions: ContentVersion[] = []): TaskDetail =
     latestVersion,
     latestApproval: null,
     approvalValid: false,
+    currentAssetSetHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     allowedTransitions: allowed(t, latestVersion !== null),
   };
 };
 
-type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean };
+type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean; admin?: boolean; approvedKit?: boolean };
+
+// Visual formats as seeded by the Worker, and a tiny SVG standing for any
+// logo or rendered visual: the UI only needs a displayable image.
+const LAYOUT = { padding: 64, titleSize: 64, subtitleSize: 32, logoHeight: 72, logoPosition: "top-left" as const, titleMaxLines: 3 };
+export const visualFormats: VisualFormat[] = [
+  { id: "article", label: "Article (OG)", width: 1200, height: 630, channel: "article", layout: LAYOUT, active: true, updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "linkedin", label: "LinkedIn", width: 1200, height: 627, channel: "linkedin", layout: LAYOUT, active: true, updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "instagram", label: "Instagram", width: 1080, height: 1080, channel: "instagram", layout: LAYOUT, active: true, updatedAt: "2026-01-01T00:00:00.000Z" },
+];
+export const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="63" viewBox="0 0 120 63"><rect width="120" height="63" fill="#1d4ed8"/></svg>';
+const HASH = "0".repeat(64);
+export const seedKit = (productId: string, status: BrandKit["status"], n = 1): BrandKit => ({
+  id: crypto.randomUUID(),
+  productId,
+  n,
+  name: `Kit ${productId} ${n}`,
+  status,
+  palette: { primary: "#1d4ed8", secondary: "#0f172a", background: "#ffffff", text: "#111827" },
+  fontFamily: "Inter, Arial, sans-serif",
+  defaultTitle: null,
+  mentions: "© Trigenys",
+  logoMime: "image/svg+xml",
+  logoHash: HASH,
+  logoBytes: SVG.length,
+  kitHash: HASH,
+  createdBy: "u-admin",
+  createdAt: "2026-02-01T00:00:00.000Z",
+  approvedBy: status === "draft" ? null : "u-admin",
+  approvedAt: status === "draft" ? null : "2026-02-02T00:00:00.000Z",
+  retiredAt: null,
+});
 
 // What a sync brings in: one CMS article and one radar topic, as received.
 export const incomingImports: Omit<ImportItem, "id" | "status" | "taskId" | "decidedBy" | "decidedAt" | "firstSeenAt" | "syncedAt">[] = [
@@ -113,10 +159,19 @@ const problem = (status: number, title: string) => ({ type: "about:blank", title
 // Intercepts every API call the app makes with an in-memory store per page,
 // mirroring the Worker's rules the UI relies on: product filtering, frozen
 // content, optimistic version on updates, transitions recorded in history.
-export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false }: Options = {}) {
-  const whoami: Me = reviewerOnly ? { ...me, grants: [{ role: "reviewer", productId: null }] } : me;
+export async function mockApi(
+  page: Page,
+  { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false, admin = false, approvedKit = true }: Options = {},
+) {
+  const whoami: Me = reviewerOnly
+    ? { ...me, grants: [{ role: "reviewer", productId: null }] }
+    : admin
+      ? { ...me, userId: "u-admin", name: "Admin", grants: [{ role: "admin", productId: null }] }
+      : me;
   const store = {
     tasks: tasks.map((t) => ({ ...t })),
+    kits: approvedKit ? [seedKit("insight", "approved")] : ([] as BrandKit[]),
+    visuals: new Map<string, VisualAsset[]>(),
     imports: [] as ImportItem[],
     versions: new Map<string, ContentVersion[]>(),
     comments: new Map<string, Comment[]>(),
@@ -342,5 +397,83 @@ export async function mockApi(page: Page, { signedIn = true, tasksStatus = 200, 
     ]);
     t.state = to;
     return json(route, body.to ? 200 : 201, { ...detail(t), allowedTransitions: [] });
+  });
+
+  const svg = (route: Route) =>
+    route.fulfill({ status: 200, contentType: "image/svg+xml", headers: { "cache-control": "private, max-age=31536000, immutable" }, body: SVG });
+  const approvedKitOf = (productId: string) => store.kits.find((k) => k.productId === productId && k.status === "approved");
+  const isWriter = () => whoami.grants.some((g) => g.role === "admin" || g.role === "operator");
+
+  await page.route("**/visual-formats", (route) => json(route, 200, visualFormats));
+  await page.route(/\/products\/[a-z0-9-]+\/brand-kits$/, (route) => {
+    const productId = route.request().url().match(/\/products\/([a-z0-9-]+)\/brand-kits$/)![1]!;
+    const mine = store.kits.filter((k) => k.productId === productId);
+    if (route.request().method() === "GET") return json(route, 200, [...mine].sort((a, b) => b.n - a.n));
+    if (!whoami.grants.some((g) => g.role === "admin")) return json(route, 403, problem(403, "Forbidden"));
+    const body = route.request().postDataJSON() as Pick<BrandKit, "name" | "palette" | "fontFamily" | "mentions"> & { logo: { mime: BrandKit["logoMime"] } };
+    const kit: BrandKit = { ...seedKit(productId, "draft", mine.length + 1), name: body.name, palette: body.palette, fontFamily: body.fontFamily, mentions: body.mentions, logoMime: body.logo.mime, createdAt: stamp() };
+    store.kits.push(kit);
+    return json(route, 201, kit);
+  });
+  await page.route(/\/brand-kits\/[0-9a-f-]{36}\/approve$/, (route) => {
+    const id = route.request().url().match(/\/brand-kits\/([0-9a-f-]{36})\/approve$/)![1]!;
+    const kit = store.kits.find((k) => k.id === id)!;
+    if (kit.status === "retired") return json(route, 409, problem(409, "Brand kit retired"));
+    for (const other of store.kits) {
+      if (other.productId === kit.productId && other.status === "approved" && other.id !== kit.id) Object.assign(other, { status: "retired", retiredAt: stamp() });
+    }
+    Object.assign(kit, { status: "approved", approvedBy: whoami.userId, approvedAt: stamp() });
+    return json(route, 200, kit);
+  });
+  await page.route(/\/brand-kits\/[0-9a-f-]{36}\/logo$/, svg);
+  await page.route(/\/visuals\/[0-9a-f-]{36}\/file$/, svg);
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/visuals$/, (route) => {
+    const id = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\/visuals$/)![1]!;
+    const t = find(id)!;
+    const all = store.visuals.get(id) ?? [];
+    if (route.request().method() === "GET") return json(route, 200, all.filter((v) => v.status === "active"));
+    if (!isWriter()) return json(route, 403, problem(403, "Forbidden"));
+    if (FROZEN.includes(t.state)) return json(route, 409, problem(409, "Task content is frozen"));
+    const kit = approvedKitOf(t.productId);
+    if (!kit) return json(route, 409, problem(409, "No approved brand kit for this product"));
+    const body = route.request().postDataJSON() as { formatId: string; subtitle: string };
+    const format = visualFormats.find((f) => f.id === body.formatId);
+    if (!format) return json(route, 422, problem(422, "Unknown visual format"));
+    const visual: VisualAsset = {
+      id: uuid(),
+      taskId: id,
+      formatId: format.id,
+      brandKitId: kit.id,
+      brandKitHash: kit.kitHash,
+      contentVersionId: null,
+      title: t.title,
+      subtitle: body.subtitle,
+      brief: "",
+      variant: all.filter((v) => v.formatId === format.id).length + 1,
+      renderer: "svg@1",
+      mime: "image/svg+xml",
+      width: format.width,
+      height: format.height,
+      contentHash: HASH,
+      byteSize: SVG.length,
+      status: "active",
+      createdBy: whoami.userId,
+      createdAt: stamp(),
+      discardedBy: null,
+      discardedAt: null,
+    };
+    store.visuals.set(id, [...all, visual]);
+    if (t.state === "awaiting_approval" || t.state === "approved") t.state = "preparing"; // the approval no longer covers the assets
+    return json(route, 201, visual);
+  });
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/visuals\/[0-9a-f-]{36}$/, (route) => {
+    const [, id, visualId] = route.request().url().match(/\/tasks\/([0-9a-f-]{36})\/visuals\/([0-9a-f-]{36})$/)!;
+    const t = find(id)!;
+    if (!isWriter()) return json(route, 403, problem(403, "Forbidden"));
+    if (FROZEN.includes(t.state)) return json(route, 409, problem(409, "Task content is frozen"));
+    const visual = (store.visuals.get(id!) ?? []).find((v) => v.id === visualId)!;
+    Object.assign(visual, { status: "discarded", discardedBy: whoami.userId, discardedAt: stamp() });
+    return json(route, 200, visual);
   });
 }

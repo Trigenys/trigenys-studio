@@ -45,6 +45,7 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `PASSKEY_RP_ID` | Worker secret / var | sensible | hôte de l'application |
 | `AUTH_BASE_URL`, `AUTH_TRUSTED_ORIGINS`, `PASSKEY_RP_NAME`, `INTEGRATION_*_MODE`, `SERVICE_NAME` | `wrangler.jsonc` | config | par environnement |
 | `VITE_API_URL` | build web | config | vide = même origine |
+| `VISUALS` | binding R2 (`wrangler.jsonc`) | config | bucket privé des logos et visuels ; requis quand `INTEGRATION_MEDIA_MODE=live` |
 | `APPFACTORY_RELEASE_TOKEN` | GitHub secret | secret | Release Please uniquement |
 | Clés des intégrations (CMS, publication, métriques, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
 

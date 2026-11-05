@@ -413,3 +413,107 @@ export const importItem = pgTable(
   },
   (t) => [uniqueIndex("import_item_origin_ref_idx").on(t.origin, t.externalRef), index("import_item_status_idx").on(t.status, t.observedAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Visuals: formats are data, brand kits are versioned and immutable once
+// approved, assets are content-addressed renders bound to a kit by hash.
+// ---------------------------------------------------------------------------
+
+export type VisualLayout = {
+  padding: number;
+  titleSize: number;
+  subtitleSize: number;
+  logoHeight: number;
+  logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  titleMaxLines: number;
+};
+
+export const visualFormat = pgTable("visual_format", {
+  id: text("id").primaryKey(),
+  label: text("label").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  channel: text("channel"),
+  layout: jsonb("layout").$type<VisualLayout>().notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const BRAND_KIT_STATUSES = ["draft", "approved", "retired"] as const;
+export type BrandKitStatus = (typeof BRAND_KIT_STATUSES)[number];
+export type BrandPalette = { primary: string; secondary: string; background: string; text: string; accent?: string };
+
+export const brandKit = pgTable(
+  "brand_kit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    n: integer("n").notNull(),
+    name: text("name").notNull(),
+    status: text("status").$type<BrandKitStatus>().notNull().default("draft"),
+    palette: jsonb("palette").$type<BrandPalette>().notNull(),
+    fontFamily: text("font_family").notNull(),
+    defaultTitle: text("default_title"),
+    mentions: text("mentions").notNull().default(""),
+    logoKey: text("logo_key").notNull(),
+    logoMime: text("logo_mime").notNull(),
+    logoHash: text("logo_hash").notNull(),
+    logoBytes: integer("logo_bytes").notNull(),
+    // sha256 of the canonical kit description (palette, font, texts, logo hash).
+    kitHash: text("kit_hash").notNull(),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    approvedBy: text("approved_by").references(() => user.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    retiredAt: timestamp("retired_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("brand_kit_product_n_idx").on(t.productId, t.n),
+    uniqueIndex("brand_kit_one_approved_idx").on(t.productId).where(sql`status = 'approved'`),
+  ],
+);
+
+export const VISUAL_STATUSES = ["active", "discarded"] as const;
+export type VisualStatus = (typeof VISUAL_STATUSES)[number];
+
+export const visualAsset = pgTable(
+  "visual_asset",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    formatId: text("format_id")
+      .notNull()
+      .references(() => visualFormat.id, { onDelete: "restrict" }),
+    brandKitId: uuid("brand_kit_id")
+      .notNull()
+      .references(() => brandKit.id, { onDelete: "restrict" }),
+    brandKitHash: text("brand_kit_hash").notNull(),
+    contentVersionId: uuid("content_version_id").references(() => contentVersion.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    subtitle: text("subtitle").notNull().default(""),
+    brief: text("brief").notNull().default(""),
+    variant: integer("variant").notNull(),
+    renderer: text("renderer").notNull(),
+    mime: text("mime").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    contentHash: text("content_hash").notNull(),
+    storageKey: text("storage_key").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    status: text("status").$type<VisualStatus>().notNull().default("active"),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    discardedBy: text("discarded_by").references(() => user.id, { onDelete: "set null" }),
+    discardedAt: timestamp("discarded_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("visual_asset_task_format_variant_idx").on(t.taskId, t.formatId, t.variant),
+    uniqueIndex("visual_asset_active_hash_idx").on(t.taskId, t.contentHash).where(sql`status = 'active'`),
+    index("visual_asset_task_status_idx").on(t.taskId, t.status),
+  ],
+);
