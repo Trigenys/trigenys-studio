@@ -118,3 +118,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Web : page « Entrées » (`/imports`), lien depuis Ma journée, hooks `useImports/useSyncImports/useLinkImport/useIgnoreImport`, mock e2e étendu, 48 Playwright verts.
 - ADR 0007. Leçon : un `ul` imbriqué dans une carte fait compter ses `li` par `getByRole("listitem")` → cibler `list.locator("> li")`.
 - Reste : locale EN du CMS et synchronisation planifiée (hors périmètre #7).
+
+## 2026-11-05 20:44 — PR #32 : CI web rouge, locators e2e corrigés
+
+- Cause : `getByRole("status")` ambigu sur mobile (rapport de synchro + état vide encore monté) et `getByLabel("Produit")` qui attrape la nav du tableau de bord pendant la transition. Correction : `filter({ hasText })` et `getByRole("combobox", { name })`. Leçon : viser le rôle précis dès qu'un libellé est partagé entre une nav et un champ.
+- Dépôt GitHub = `Trigenys/trigenys-studio` (pas EagleFox31) : les logs de job se lisent via `gh api --allow-escape-sequences repos/Trigenys/trigenys-studio/actions/jobs/<id>/logs`.
+- Suite : merge #32 dès CI verte, puis incrément 11 = #8 (pipeline visuel et brand kits).

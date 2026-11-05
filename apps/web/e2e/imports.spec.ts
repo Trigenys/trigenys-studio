@@ -8,7 +8,8 @@ test("imports are previewed, synchronised, turned into a task or ignored", async
   await expect(page.getByRole("status")).toContainText("Aucune entrée");
 
   await page.getByRole("button", { name: "Synchroniser" }).click();
-  await expect(page.getByRole("status")).toContainText("Radar Editorial OS : 1 reçu(s), 1 nouveau(x)");
+  // The sync report and the (still fading) empty state are both live regions: filter.
+  await expect(page.getByRole("status").filter({ hasText: "Radar Editorial OS" })).toContainText("Radar Editorial OS : 1 reçu(s), 1 nouveau(x)");
   const list = page.getByRole("list", { name: "Entrées" });
   const cards = list.locator("> li"); // each card nests its own list of sources
   await expect(cards).toHaveCount(2);

@@ -8,7 +8,8 @@ test("creates a task and saves a first version in five interactions", async ({ p
   await page.goto("/today?product=insight");
   await page.getByRole("link", { name: "Nouvelle tâche" }).click(); // 1
   await expect(page).toHaveURL(/\/tasks\/new\?product=insight$/);
-  await expect(page.getByLabel("Produit")).toHaveValue("insight");
+  // The dashboard nav is also labelled "Produit" and may still be mounted: target the select.
+  await expect(page.getByRole("combobox", { name: "Produit" })).toHaveValue("insight");
   await page.getByLabel("Titre").fill("Post de lancement"); // 2
   await page.getByRole("button", { name: "Créer la tâche" }).click(); // 3
   await expect(page).toHaveURL(UUID);
