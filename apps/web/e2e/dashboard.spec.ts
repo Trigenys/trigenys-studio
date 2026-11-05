@@ -89,6 +89,7 @@ test("keyboard: skip link, views and product filter are reachable and operable",
   await page.keyboard.press("Enter");
   await expect(page.locator("#main")).toBeFocused();
 
+  await page.keyboard.press("Tab"); // Nouvelle tâche
   await page.keyboard.press("Tab"); // Tous les produits
   await page.keyboard.press("Tab"); // Trigenys Insight
   await expect(page.getByRole("button", { name: "Trigenys Insight" })).toBeFocused();
@@ -110,6 +111,6 @@ test("reviewer approves from the task page", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Édito de novembre");
   await page.getByLabel("Commentaire (facultatif)").fill("Parfait");
   await page.getByRole("button", { name: "Approuver" }).click();
-  await expect(page.getByText("Approuvée", { exact: true })).toBeVisible();
+  await expect(page.locator(".chip-state")).toHaveText("Approuvée");
   await expect(page.getByRole("button", { name: "Approuver" })).toHaveCount(0);
 });

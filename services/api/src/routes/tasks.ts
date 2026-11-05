@@ -110,8 +110,8 @@ export const CommentSchema = z
   .openapi("Comment");
 
 export const TaskDetailSchema = TaskSchema.extend({
-  latestVersion: ContentVersionSchema.nullable(),
-  latestApproval: ApprovalSchema.nullable(),
+  latestVersion: z.union([ContentVersionSchema, z.null()]),
+  latestApproval: z.union([ApprovalSchema, z.null()]),
   approvalValid: z.boolean(),
   // What the caller may do next; the server re-checks on every request.
   allowedTransitions: z.array(z.enum(TASK_STATES)),

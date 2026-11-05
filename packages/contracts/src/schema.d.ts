@@ -1334,8 +1334,8 @@ export interface components {
             updatedAt: string;
         };
         TaskDetail: components["schemas"]["Task"] & {
-            latestVersion: components["schemas"]["ContentVersion"];
-            latestApproval: components["schemas"]["Approval"];
+            latestVersion: components["schemas"]["ContentVersion"] | null;
+            latestApproval: components["schemas"]["Approval"] | null;
             approvalValid: boolean;
             allowedTransitions: ("qualifying" | "preparing" | "reviewing" | "visuals" | "awaiting_approval" | "approved" | "scheduled" | "published" | "measured" | "needs_fix" | "rejected" | "failed")[];
         };
@@ -1352,7 +1352,7 @@ export interface components {
             authorId: string | null;
             /** Format: date-time */
             createdAt: string;
-        } | null;
+        };
         Approval: {
             /** Format: uuid */
             id: string;
@@ -1368,7 +1368,7 @@ export interface components {
             comment: string | null;
             /** Format: date-time */
             createdAt: string;
-        } | null;
+        };
         CreateTask: {
             productId: string;
             /** @example post */

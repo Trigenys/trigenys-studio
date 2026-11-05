@@ -1,4 +1,4 @@
-import type { Task } from "@trigenys/studio-contracts";
+import type { Me, Task } from "@trigenys/studio-contracts";
 
 export type ViewId = "today" | "review" | "scheduled" | "late";
 
@@ -92,3 +92,18 @@ export const STATE_LABELS: Record<Task["state"], string> = {
   rejected: "Rejetée",
   failed: "Échec de publication",
 };
+
+// Who may write on a product. The server is the authority (403 otherwise);
+// this only decides whether to show the editing forms.
+export const canWrite = (me: Me, productId: string) =>
+  me.grants.some((g) => (g.role === "admin" || g.role === "operator") && (g.productId === null || g.productId === productId));
+
+export const canReview = (me: Me, productId: string) =>
+  me.grants.some((g) => (g.role === "admin" || g.role === "reviewer") && (g.productId === null || g.productId === productId));
+
+// Mirrors the pipeline's frozen states (the server answers 409 anyway): the
+// version form is hidden rather than offered and refused.
+export const FROZEN_STATES: ReadonlySet<Task["state"]> = new Set(["scheduled", "published", "measured"]);
+
+export const CHANNELS = ["linkedin", "x", "instagram", "newsletter", "blog", "youtube"] as const;
+export const TASK_TYPES = ["post", "article", "newsletter", "thread", "video", "story"] as const;

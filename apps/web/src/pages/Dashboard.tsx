@@ -1,6 +1,6 @@
 import type { Me } from "@trigenys/studio-contracts";
 import { useDeferredValue, useMemo } from "react";
-import { NavLink, Navigate, useParams, useSearchParams } from "react-router";
+import { Link, NavLink, Navigate, useParams, useSearchParams } from "react-router";
 import { useProducts, useTasks } from "../api/queries";
 import { Empty, ErrorState, Loading } from "../components/States";
 import { TaskList } from "../components/TaskList";
@@ -38,10 +38,18 @@ export function DashboardPage({ me }: { me: Me }) {
     setParams(next, { replace: key === "q" });
   };
   const keepParams = params.toString() ? `?${params.toString()}` : "";
+  const writer = me.grants.some((g) => g.role === "admin" || g.role === "operator");
 
   return (
     <>
-      <h1 className="page-title">Ma journée</h1>
+      <div className="page-head">
+        <h1 className="page-title">Ma journée</h1>
+        {writer ? (
+          <Link to={`/tasks/new${productId ? `?product=${productId}` : ""}`} className="btn btn-primary">
+            Nouvelle tâche
+          </Link>
+        ) : null}
+      </div>
 
       <nav className="product-filter" aria-label="Produit">
         <button type="button" className="chip-btn" aria-pressed={productId === null} onClick={() => setParam("product", null)}>

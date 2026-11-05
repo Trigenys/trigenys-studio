@@ -384,10 +384,24 @@
             "type": "object",
             "properties": {
               "latestVersion": {
-                "$ref": "#/components/schemas/ContentVersion"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ContentVersion"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "latestApproval": {
-                "$ref": "#/components/schemas/Approval"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Approval"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "approvalValid": {
                 "type": "boolean"
@@ -423,10 +437,7 @@
         ]
       },
       "ContentVersion": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "id": {
             "type": "string",
@@ -475,10 +486,7 @@
         ]
       },
       "Approval": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "id": {
             "type": "string",
