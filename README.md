@@ -36,6 +36,8 @@ Authentification (Better Auth, tables dans Neon via Drizzle) : passkeys et magic
 
 Autorisation : rôles `admin`, `operator`, `reviewer` (`role_assignment`, éventuellement par produit) et politiques déclaratives dans `services/api/src/auth/rbac.ts` ; `authorize(action, resource)` répond 401/403 (problem+json). Chaque changement d'état passe par `audited()` : la ligne `audit_event` est écrite dans la même transaction, et un trigger rend la table append-only.
 
+Pipeline de contenu : `product`, `task` (machine d'états déclarée dans `services/api/src/pipeline/definition.ts`, moteur générique dans `engine.ts`), `content_version`, `comment`, `approval` et `task_transition`. Chaque transition porte son action RBAC et un garde éventuel ; `approved` n'est atteignable que par une décision (`POST /tasks/{id}/approvals`, quatre yeux : l'auteur de la dernière version ne décide pas) liée au `content_hash` et à l'`asset_set_hash` de la version approuvée, invalidée dès qu'une nouvelle version arrive. Les `PATCH` exigent `version` (concurrence optimiste, 409 si périmé) ; les `POST` acceptent un en-tête `Idempotency-Key` (rejeu de la réponse pour une requête identique, 422 si la clé est réutilisée avec un autre contenu).
+
 Migrations : `npm run db:generate -w services/api` après un changement de `src/db/schema.ts`, `npm run db:migrate -w services/api` avec `DATABASE_URL`. Les tests rejouent les migrations sur PGlite (Postgres en mémoire), sans base externe.
 
 ## CI / automatisation
