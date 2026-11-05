@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray, lte, type SQL } from "drizzle-orm";
 import { audited, recordAudit } from "../auth/audit.ts";
 import { authorize, requireSession } from "../auth/middleware.ts";
 import { decide, type Principal } from "../auth/rbac.ts";
-import type { Db } from "../db/client.ts";
+import type { Db, Tx } from "../db/client.ts";
 import {
   APPROVAL_DECISIONS,
   TASK_STATES,
@@ -178,17 +178,17 @@ const ListTasksQuery = z.object({
 // Helpers
 // ---------------------------------------------------------------------------
 
-const problemResponse = (description: string) => ({
+export const problemResponse = (description: string) => ({
   description,
   content: { "application/problem+json": { schema: ProblemSchema } },
 });
-const jsonBody = <T extends z.ZodTypeAny>(schema: T) => ({
+export const jsonBody = <T extends z.ZodTypeAny>(schema: T) => ({
   content: { "application/json": { schema } },
   required: true,
 });
-const security: Record<string, string[]>[] = [{ cookieAuth: [] }, { bearerAuth: [] }];
-const idParam = z.object({ id: z.uuid() });
-const idempotencyHeader = z.object({
+export const security: Record<string, string[]>[] = [{ cookieAuth: [] }, { bearerAuth: [] }];
+export const idParam = z.object({ id: z.uuid() });
+export const idempotencyHeader = z.object({
   "idempotency-key": z.string().min(1).max(200).optional().openapi({ description: "Replays an identical request" }),
 });
 
@@ -200,7 +200,7 @@ const serialiseTask = (t: TaskRow) => ({
   createdAt: t.createdAt.toISOString(),
   updatedAt: t.updatedAt.toISOString(),
 });
-const serialiseVersion = (v: ContentVersionRow) => ({ ...v, createdAt: v.createdAt.toISOString() });
+export const serialiseVersion = (v: ContentVersionRow) => ({ ...v, createdAt: v.createdAt.toISOString() });
 const serialiseApproval = (a: ApprovalRow) => ({ ...a, createdAt: a.createdAt.toISOString() });
 const serialiseTransition = (t: typeof taskTransition.$inferSelect) => ({ ...t, createdAt: t.createdAt.toISOString() });
 const serialiseComment = (r: typeof comment.$inferSelect) => ({ ...r, createdAt: r.createdAt.toISOString() });
@@ -216,14 +216,14 @@ async function detail(s: TaskSnapshot, principal: Principal) {
 }
 
 // Resource loader for the task routes: 404 for unknown ids, policy input otherwise.
-const taskResource = async (c: { req: { param: (k: string) => string | undefined }; var: { db: Db } }) => {
+export const taskResource = async (c: { req: { param: (k: string) => string | undefined }; var: { db: Db } }) => {
   const id = c.req.param("id") ?? "";
   if (!UUID.test(id)) return null;
   const s = await loadSnapshot(c.var.db, id);
   return s ? resourceOf(s) : null;
 };
 
-const snapshotOr404 = async (db: Db, id: string, lock = false): Promise<TaskSnapshot> => {
+export const snapshotOr404 = async (db: Db, id: string, lock = false): Promise<TaskSnapshot> => {
   const s = await loadSnapshot(db, id, lock);
   if (!s) throw new ProblemError(404, "Unknown task");
   return s;
@@ -233,6 +233,32 @@ const asProblem = (e: unknown): never => {
   if (e instanceof TransitionError) throw new ProblemError(e.status, "Transition refused", { detail: e.message });
   throw e;
 };
+
+// Appends a content version to a task that is not frozen (the caller checks)
+// and, when the task was submitted or approved, sends it back to preparing:
+// an approval binds to a hash, so new content never inherits it.
+export async function insertVersion(
+  tx: Tx,
+  s: TaskSnapshot,
+  body: { channel: string; body: string; aiAssisted: boolean },
+  principal: Principal,
+): Promise<ContentVersionRow> {
+  const [row] = await tx
+    .insert(contentVersion)
+    .values({
+      taskId: s.task.id,
+      n: (s.latestVersion?.n ?? 0) + 1,
+      channel: body.channel,
+      body: body.body,
+      contentHash: await sha256(body.body),
+      aiAssisted: body.aiAssisted,
+      authorId: principal.userId,
+    })
+    .returning();
+  const back = pipelineDefinition.invalidatedBy[s.task.state];
+  if (back) await applyTransition(tx, s, back, principal.userId, "content changed after submission");
+  return row!;
+}
 
 // Products the principal may read; null means all of them.
 const readableProducts = (p: Principal): string[] | null =>
@@ -582,22 +608,7 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
               detail: `No new version while the task is ${s.task.state}`,
             });
           }
-          const [row] = await tx
-            .insert(contentVersion)
-            .values({
-              taskId: id,
-              n: (s.latestVersion?.n ?? 0) + 1,
-              channel: body.channel,
-              body: body.body,
-              contentHash: await sha256(body.body),
-              aiAssisted: body.aiAssisted,
-              authorId: principal.userId,
-            })
-            .returning();
-          // Editing after submission invalidates the approval: back to preparing.
-          const back = pipelineDefinition.invalidatedBy[s.task.state];
-          if (back) await applyTransition(tx, s, back, principal.userId, "content changed after submission");
-          return row!;
+          return insertVersion(tx, s, body, principal);
         },
       );
       return { status: 201 as const, body: serialiseVersion(created) };

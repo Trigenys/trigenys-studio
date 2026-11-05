@@ -14,6 +14,8 @@
     "INTEGRATION_PUBLISHER_MODE": "mock",
     "INTEGRATION_CMS_MODE": "mock",
     "INTEGRATION_METRICS_MODE": "mock",
+    // "live" needs the ANTHROPIC_API_KEY Worker secret (wrangler secret put ANTHROPIC_API_KEY);
+    // LLM_MODEL (optional var) overrides the default model of the adapter.
     "INTEGRATION_LLM_MODE": "mock",
     "INTEGRATION_EMAIL_MODE": "mock",
     // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).

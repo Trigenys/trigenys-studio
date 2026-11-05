@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AiInteraction,
+  AssistRequest,
+  CreateTaskSource,
+  TaskSource,
   Comment,
   ContentVersion,
   CreateComment,
@@ -150,5 +154,86 @@ export function useDecide(id: string) {
     mutationFn: async (body) =>
       unwrap(await api.POST("/tasks/{id}/approvals", { params: { path: { id } }, body, headers: idempotencyKey() })),
     onSuccess: done,
+  });
+}
+
+// --- Dossier: sources and assistant -----------------------------------------
+
+export const dossierKeys = {
+  sources: (id: string) => ["task", id, "sources"] as const,
+  interactions: (id: string) => ["task", id, "assistant"] as const,
+};
+
+export function useSources(id: string) {
+  return useQuery<TaskSource[], ApiError>({
+    queryKey: dossierKeys.sources(id),
+    queryFn: async () => unwrap(await api.GET("/tasks/{id}/sources", { params: { path: { id } } })),
+  });
+}
+
+export function useAddSource(id: string) {
+  const qc = useQueryClient();
+  return useMutation<TaskSource, ApiError, CreateTaskSource>({
+    mutationFn: async (body) =>
+      unwrap(await api.POST("/tasks/{id}/sources", { params: { path: { id } }, body, headers: idempotencyKey() })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: dossierKeys.sources(id) }),
+  });
+}
+
+export function useRemoveSource(id: string) {
+  const qc = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: async (sourceId) => {
+      unwrap(await api.DELETE("/tasks/{id}/sources/{sourceId}", { params: { path: { id, sourceId } } }));
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: dossierKeys.sources(id) }),
+  });
+}
+
+export function useInteractions(id: string) {
+  return useQuery<AiInteraction[], ApiError>({
+    queryKey: dossierKeys.interactions(id),
+    queryFn: async () => unwrap(await api.GET("/tasks/{id}/assistant", { params: { path: { id } } })),
+  });
+}
+
+// A run only produces a proposal: nothing on the task changes until it is
+// accepted, so only the interaction list is refreshed.
+export function useAssist(id: string) {
+  const qc = useQueryClient();
+  return useMutation<AiInteraction, ApiError, AssistRequest>({
+    mutationFn: async (body) =>
+      unwrap(await api.POST("/tasks/{id}/assistant", { params: { path: { id } }, body, headers: idempotencyKey() })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: dossierKeys.interactions(id) }),
+  });
+}
+
+// Accepting goes through the same rules as a hand-written version: the task
+// may move back, so the detail is refetched rather than patched.
+export function useAcceptInteraction(id: string) {
+  const qc = useQueryClient();
+  return useMutation<ContentVersion, ApiError, string>({
+    mutationFn: async (interactionId) =>
+      unwrap(
+        await api.POST("/tasks/{id}/assistant/{interactionId}/accept", {
+          params: { path: { id, interactionId } },
+          headers: idempotencyKey(),
+        }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: dossierKeys.interactions(id) });
+      void qc.invalidateQueries({ queryKey: keys.task(id) });
+      void qc.invalidateQueries({ queryKey: keys.versions(id) });
+      void qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useDismissInteraction(id: string) {
+  const qc = useQueryClient();
+  return useMutation<AiInteraction, ApiError, string>({
+    mutationFn: async (interactionId) =>
+      unwrap(await api.POST("/tasks/{id}/assistant/{interactionId}/dismiss", { params: { path: { id, interactionId } } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: dossierKeys.interactions(id) }),
   });
 }

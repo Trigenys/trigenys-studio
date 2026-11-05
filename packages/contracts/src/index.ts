@@ -22,6 +22,10 @@ export type CreateComment = components["schemas"]["CreateComment"];
 export type TaskTransition = components["schemas"]["TaskTransition"];
 export type RequestTransition = components["schemas"]["RequestTransition"];
 export type DecideApproval = components["schemas"]["DecideApproval"];
+export type TaskSource = components["schemas"]["TaskSource"];
+export type CreateTaskSource = components["schemas"]["CreateTaskSource"];
+export type AiInteraction = components["schemas"]["AiInteraction"];
+export type AssistRequest = components["schemas"]["AssistRequest"];
 
 // Typed HTTP client shared by the web app (cookie session) and tooling.
 // Mobile clients are generated from openapi.json with openapi-generator (Kotlin).

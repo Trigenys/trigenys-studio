@@ -169,3 +169,48 @@ a { color: var(--accent); }
 .comments li, .timeline li { padding: 10px 12px; border-left: 2px solid var(--line); }
 .comments p, .timeline p { margin: 0 0 4px; }
 .timeline pre.prose { margin: 4px 0 0; }
+
+/* Dossier and assistant */
+.sources,
+.proposals {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.sources li,
+.proposals li {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.proposals li[data-status="accepted"] {
+  border-color: var(--teal);
+}
+.proposals li[data-status="dismissed"] {
+  opacity: 0.7;
+}
+.diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.diff-added {
+  display: block;
+  background: rgba(20, 184, 166, 0.16);
+}
+.diff-removed {
+  display: block;
+  background: rgba(248, 113, 113, 0.16);
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+}
+.diff-same {
+  display: block;
+  color: var(--muted);
+}

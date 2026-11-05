@@ -11,6 +11,7 @@ import { healthRoutes } from "./routes/health.ts";
 import { meRoutes } from "./routes/me.ts";
 import { productRoutes } from "./routes/products.ts";
 import { roleRoutes } from "./routes/roles.ts";
+import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { VERSION } from "./version.ts";
 
@@ -112,6 +113,7 @@ export function createApp(deps: AppDeps = {}) {
   app.route("/", roleRoutes);
   app.route("/", productRoutes);
   app.route("/", taskRoutes);
+  app.route("/", dossierRoutes);
 
   return app;
 }
