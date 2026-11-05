@@ -10,7 +10,7 @@ describe("integration registry", () => {
       "mock-metrics",
       "mock-llm",
     ]);
-    expect(await i.cms.listRecent(10)).toHaveLength(3);
+    expect(await i.cms.listArticles({ limit: 10 })).toHaveLength(3);
   });
 
   it("refuses a live mode that has no adapter instead of falling back silently", () => {

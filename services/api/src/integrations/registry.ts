@@ -1,6 +1,8 @@
 import type { Bindings, IntegrationMode } from "../env.ts";
 import { AnthropicLlm } from "./anthropic/llm.ts";
-import { MockCms, MockLlm, MockMetrics, MockPublisher } from "./mock/index.ts";
+import { EditorialOsRadar } from "./editorial-os/radar.ts";
+import { InsightCms } from "./insight/cms.ts";
+import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
 import type { Integrations } from "./types.ts";
 
@@ -20,6 +22,18 @@ const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations
     }
     return new AnthropicLlm({ apiKey: env.ANTHROPIC_API_KEY, model: env.LLM_MODEL });
   },
+  cms: (env) => {
+    if (!env.INSIGHT_BASE_URL || !env.INSIGHT_PUBLISHING_TOKEN) {
+      throw new IntegrationNotAvailableError("cms", "live", "INTEGRATION_CMS_MODE=live requires INSIGHT_BASE_URL and the INSIGHT_PUBLISHING_TOKEN secret");
+    }
+    return new InsightCms({ baseUrl: env.INSIGHT_BASE_URL, token: env.INSIGHT_PUBLISHING_TOKEN });
+  },
+  radar: (env) => {
+    if (!env.EDITORIAL_OS_BASE_URL || !env.EDITORIAL_OS_TOKEN) {
+      throw new IntegrationNotAvailableError("radar", "live", "INTEGRATION_RADAR_MODE=live requires EDITORIAL_OS_BASE_URL and the EDITORIAL_OS_TOKEN secret");
+    }
+    return new EditorialOsRadar({ baseUrl: env.EDITORIAL_OS_BASE_URL, token: env.EDITORIAL_OS_TOKEN });
+  },
 };
 
 function normalise(value: IntegrationMode | undefined): IntegrationMode {
@@ -30,6 +44,7 @@ export function integrationModes(env: Bindings): Record<keyof Integrations, Inte
   return {
     publisher: normalise(env.INTEGRATION_PUBLISHER_MODE),
     cms: normalise(env.INTEGRATION_CMS_MODE),
+    radar: normalise(env.INTEGRATION_RADAR_MODE),
     metrics: normalise(env.INTEGRATION_METRICS_MODE),
     llm: normalise(env.INTEGRATION_LLM_MODE),
     email: normalise(env.INTEGRATION_EMAIL_MODE),
@@ -51,6 +66,7 @@ export function createIntegrations(env: Bindings, overrides: Partial<Integration
   return {
     publisher: new MockPublisher(),
     cms: new MockCms(),
+    radar: new MockRadar(),
     metrics: new MockMetrics(),
     llm: new MockLlm(),
     email: new MockMailer((line) => console.log(line)),

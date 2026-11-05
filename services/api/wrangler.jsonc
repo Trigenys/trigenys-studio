@@ -12,7 +12,10 @@
   "vars": {
     "SERVICE_NAME": "trigenys-studio-api",
     "INTEGRATION_PUBLISHER_MODE": "mock",
+    // live: INSIGHT_BASE_URL var + INSIGHT_PUBLISHING_TOKEN secret (wrangler secret put).
     "INTEGRATION_CMS_MODE": "mock",
+    // live: EDITORIAL_OS_BASE_URL var + EDITORIAL_OS_TOKEN secret.
+    "INTEGRATION_RADAR_MODE": "mock",
     "INTEGRATION_METRICS_MODE": "mock",
     // "live" needs the ANTHROPIC_API_KEY Worker secret (wrangler secret put ANTHROPIC_API_KEY);
     // LLM_MODEL (optional var) overrides the default model of the adapter.

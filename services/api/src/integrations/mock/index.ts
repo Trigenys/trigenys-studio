@@ -1,11 +1,13 @@
 import type {
   Cms,
+  ListQuery,
   Llm,
   LlmRequest,
   MetricsProvider,
   MetricTarget,
   PublishRequest,
   Publisher,
+  Radar,
 } from "../types.ts";
 
 // Deterministic mocks: same input, same output, no network. They let every
@@ -37,13 +39,33 @@ export class MockPublisher implements Publisher {
 
 export class MockCms implements Cms {
   readonly name = "mock-cms";
-  async listRecent(limit: number) {
-    return Array.from({ length: Math.min(limit, 3) }, (_, i) => ({
+  async listArticles(query: ListQuery) {
+    return Array.from({ length: Math.min(query.limit, 3) }, (_, i) => ({
       externalRef: `mock-article-${i + 1}`,
+      locale: "fr",
       title: `Article de démonstration ${i + 1}`,
+      excerpt: "Contenu fictif pour les tests.",
+      status: "published" as const,
       url: `https://example.invalid/insight/article-${i + 1}`,
       publishedAt: new Date(Date.UTC(2026, 0, i + 1)).toISOString(),
-      excerpt: "Contenu fictif pour les tests.",
+      updatedAt: new Date(Date.UTC(2026, 0, i + 1)).toISOString(),
+    }));
+  }
+}
+
+export class MockRadar implements Radar {
+  readonly name = "mock-radar";
+  async listProposals(query: ListQuery) {
+    return Array.from({ length: Math.min(query.limit, 2) }, (_, i) => ({
+      externalRef: `mock-topic-${i + 1}`,
+      title: `Sujet radar ${i + 1}`,
+      angle: "Angle proposé pour les tests.",
+      format: "analysis",
+      vertical: "insight",
+      score: 70 + i,
+      sources: [`https://example.invalid/source-${i + 1}`],
+      observedAt: new Date(Date.UTC(2026, 1, i + 1)).toISOString(),
+      updatedAt: new Date(Date.UTC(2026, 1, i + 1)).toISOString(),
     }));
   }
 }

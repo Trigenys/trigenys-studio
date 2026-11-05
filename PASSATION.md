@@ -105,3 +105,22 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuves : API 51/51, dry-run ok, contracts/openapi check ok, web typecheck+build ok, Playwright 44/44.
 - Leçon : Playwright `getByLabel` matche par sous-chaîne et compte les sections `aria-labelledby` ("Action" ↔ section "Actions", "Titre" ↔ "Titre de la source"). Les libellés de formulaire doivent rester uniques sur une page : assistant → "Intervention" / "Destination", source → "Nom de la source". Le message « Contenu gelé » est affiché à tous les rôles.
 - Reste : après merge, incrément suivant du backlog (vérifier les issues ouvertes) ; suivi noté : aligner impact/release sur le SHA registry 8847e488 après relecture du diff.
+
+## 2026-11-05 20:22 — Incrément 10 démarré : #7 imports CMS Insight + radar Editorial OS
+
+- PR #31 mergée (0b45755). Branche `feat/imports-cms-radar`.
+- Discovery (lecture gh) : Insight = `POST {INSIGHT_BASE_URL}/api/editorial-os` body `{operation:"list-posts", locale, status, publishedAfter, sort:"-updatedAt", page, limit≤100}`, Bearer `INSIGHT_PUBLISHING_TOKEN`, docs `PostSummary{id,slug,title,excerpt,status,heroImage,updatedAt,publishedAt,translationPresent}` ; pas de webhook. Editorial OS = `GET {EDITORIAL_OS_BASE_URL}/api/operator/runs?topic_decision=PROPOSE&updated_after=&limit≤100`, Bearer `EDITORIAL_OS_TOKEN`, `OperatorRunSummary{id,topic_title,topic_proposed_angle,topic_proposed_format,topic_sources[],topic_composite_score,vertical_key,created_at,updated_at}`.
+- Design : table `import_item(origin cms|radar, external_ref UNIQUE par origine, title, url, summary, payload jsonb, observed_at, status new|linked|ignored, task_id)` ; `POST /imports/sync` (upsert, jamais de reset du statut), `GET /imports`, `POST /imports/{id}/task` (tâche + sources origin cms/radar), `POST /imports/{id}/ignore` ; adaptateurs `Radar`/`Cms` live derrière secrets, mock par défaut ; web page « Entrées ». Lecture seule côté CMS (droits respectés).
+
+## 2026-11-05 20:37 — Incrément 10 livré : PR imports CMS Insight + radar Editorial OS
+
+- API : `import_item` (migration `0004_imports`), routes `/imports` (list, sync, get, task, ignore), adaptateurs `InsightCms` et `EditorialOsRadar` (`fetch` injectable, `UpstreamError` → 502), `MockRadar`, mode `INTEGRATION_RADAR_MODE`. Tests : 64 API verts, adaptateurs testés sans réseau.
+- Web : page « Entrées » (`/imports`), lien depuis Ma journée, hooks `useImports/useSyncImports/useLinkImport/useIgnoreImport`, mock e2e étendu, 48 Playwright verts.
+- ADR 0007. Leçon : un `ul` imbriqué dans une carte fait compter ses `li` par `getByRole("listitem")` → cibler `list.locator("> li")`.
+- Reste : locale EN du CMS et synchronisation planifiée (hors périmètre #7).
+
+## 2026-11-05 20:44 — PR #32 : CI web rouge, locators e2e corrigés
+
+- Cause : `getByRole("status")` ambigu sur mobile (rapport de synchro + état vide encore monté) et `getByLabel("Produit")` qui attrape la nav du tableau de bord pendant la transition. Correction : `filter({ hasText })` et `getByRole("combobox", { name })`. Leçon : viser le rôle précis dès qu'un libellé est partagé entre une nav et un champ.
+- Dépôt GitHub = `Trigenys/trigenys-studio` (pas EagleFox31) : les logs de job se lisent via `gh api --allow-escape-sequences repos/Trigenys/trigenys-studio/actions/jobs/<id>/logs`.
+- Suite : merge #32 dès CI verte, puis incrément 11 = #8 (pipeline visuel et brand kits).
