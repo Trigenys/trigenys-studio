@@ -1,5 +1,6 @@
 import type { Bindings, IntegrationMode } from "../env.ts";
 import { AnthropicLlm } from "./anthropic/llm.ts";
+import { BufferPublisher } from "./buffer/publisher.ts";
 import { EditorialOsRadar } from "./editorial-os/radar.ts";
 import { InsightCms } from "./insight/cms.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
@@ -18,6 +19,12 @@ export class IntegrationNotAvailableError extends Error {
 // Live adapters, one per integration kind, built from the Worker bindings.
 // A missing secret is an explicit, actionable error at request time.
 const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations[K] }> = {
+  publisher: (env) => {
+    if (!env.BUFFER_API_KEY) {
+      throw new IntegrationNotAvailableError("publisher", "live", "INTEGRATION_PUBLISHER_MODE=live requires the BUFFER_API_KEY secret");
+    }
+    return new BufferPublisher({ apiKey: env.BUFFER_API_KEY, baseUrl: env.BUFFER_BASE_URL, organizationId: env.BUFFER_ORGANIZATION_ID });
+  },
   media: (env) => {
     if (!env.VISUALS) throw new IntegrationNotAvailableError("media", "live", "INTEGRATION_MEDIA_MODE=live requires the VISUALS R2 bucket binding");
     return new R2MediaStore(env.VISUALS);

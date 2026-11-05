@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AiInteraction,
+  Calendar,
+  CreateDelivery,
+  CreateSocialAccount,
+  Delivery,
+  DeliveryAttempt,
+  ProviderAccount,
+  PublishReadiness,
+  SocialAccount,
+  UpdateSocialAccount,
   AssistRequest,
   BrandKit,
   CreateBrandKit,
@@ -378,4 +387,132 @@ export function useBlobUrl(path: string | null) {
   const url = query.data;
   useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
   return query;
+}
+
+// ---------------------------------------------------------------------------
+// Publishing: social accounts, deliveries, calendar
+// ---------------------------------------------------------------------------
+
+export const publishKeys = {
+  accounts: (productId: string | null, channel: string | null) => ["social-accounts", productId ?? "all", channel ?? "all"] as const,
+  providerChannels: ["social-accounts", "provider-channels"] as const,
+  deliveries: (taskId: string) => ["task", taskId, "deliveries"] as const,
+  readiness: (taskId: string, accountId: string, scheduledAt: string | null) => ["task", taskId, "readiness", accountId, scheduledAt ?? ""] as const,
+  attempts: (deliveryId: string) => ["delivery", deliveryId, "attempts"] as const,
+  calendar: (from: string, to: string, productId: string | null) => ["calendar", from, to, productId ?? "all"] as const,
+};
+
+export function useSocialAccounts(productId: string | null, channel: SocialAccount["channel"] | null = null) {
+  return useQuery<SocialAccount[], ApiError>({
+    queryKey: publishKeys.accounts(productId, channel),
+    queryFn: async () =>
+      unwrap(await api.GET("/social-accounts", { params: { query: { ...(productId ? { productId } : {}), ...(channel ? { channel } : {}) } } })),
+    staleTime: 60_000,
+  });
+}
+
+// Only on demand: the provider is called each time, so the admin asks for it.
+export function useProviderChannels(enabled: boolean) {
+  return useQuery<ProviderAccount[], ApiError>({
+    queryKey: publishKeys.providerChannels,
+    queryFn: async () => unwrap(await api.GET("/social-accounts/provider-channels")),
+    enabled,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateSocialAccount() {
+  const qc = useQueryClient();
+  return useMutation<SocialAccount, ApiError, CreateSocialAccount>({
+    mutationFn: async (body) => unwrap(await api.POST("/social-accounts", { body, headers: idempotencyKey() })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["social-accounts"] }),
+  });
+}
+
+export function useUpdateSocialAccount() {
+  const qc = useQueryClient();
+  return useMutation<SocialAccount, ApiError, { id: string } & UpdateSocialAccount>({
+    mutationFn: async ({ id, ...body }) => unwrap(await api.PATCH("/social-accounts/{id}", { params: { path: { id } }, body })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["social-accounts"] }),
+  });
+}
+
+export function useDeliveries(taskId: string) {
+  return useQuery<Delivery[], ApiError>({
+    queryKey: publishKeys.deliveries(taskId),
+    queryFn: async () => unwrap(await api.GET("/tasks/{id}/deliveries", { params: { path: { id: taskId } } })),
+  });
+}
+
+export function usePublishReadiness(taskId: string, socialAccountId: string, scheduledAt: string | null) {
+  return useQuery<PublishReadiness, ApiError>({
+    queryKey: publishKeys.readiness(taskId, socialAccountId, scheduledAt),
+    enabled: socialAccountId !== "",
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/tasks/{id}/publish-readiness", {
+          params: { path: { id: taskId }, query: { socialAccountId, ...(scheduledAt ? { scheduledAt } : {}) } },
+        }),
+      ),
+  });
+}
+
+// Every delivery change can move the task (approved <-> scheduled <-> failed):
+// the task, its deliveries and the calendar are reloaded together.
+function useDeliveryMutation<TVars>(taskId: string, run: (vars: TVars) => Promise<Delivery>) {
+  const qc = useQueryClient();
+  return useMutation<Delivery, ApiError, TVars>({
+    mutationFn: run,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: publishKeys.deliveries(taskId) });
+      void qc.invalidateQueries({ queryKey: keys.task(taskId) });
+      void qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useCreateDelivery(taskId: string) {
+  return useDeliveryMutation<CreateDelivery>(taskId, async (body) =>
+    unwrap(await api.POST("/tasks/{id}/deliveries", { params: { path: { id: taskId } }, body, headers: idempotencyKey() })),
+  );
+}
+
+export function useScheduleDelivery(taskId: string) {
+  return useDeliveryMutation<{ id: string; scheduledAt: string; version: number }>(taskId, async ({ id, ...body }) =>
+    unwrap(await api.POST("/deliveries/{id}/schedule", { params: { path: { id } }, body })),
+  );
+}
+
+export function useCancelDelivery(taskId: string) {
+  return useDeliveryMutation<{ id: string; version: number }>(taskId, async ({ id, ...body }) =>
+    unwrap(await api.POST("/deliveries/{id}/cancel", { params: { path: { id } }, body })),
+  );
+}
+
+export function useRetryDelivery(taskId: string) {
+  return useDeliveryMutation<{ id: string; version: number }>(taskId, async ({ id, ...body }) =>
+    unwrap(await api.POST("/deliveries/{id}/retry", { params: { path: { id } }, body })),
+  );
+}
+
+export function useSetPermalink(taskId: string) {
+  return useDeliveryMutation<{ id: string; url: string; version: number }>(taskId, async ({ id, ...body }) =>
+    unwrap(await api.PUT("/deliveries/{id}/permalink", { params: { path: { id } }, body })),
+  );
+}
+
+export function useDeliveryAttempts(deliveryId: string) {
+  return useQuery<DeliveryAttempt[], ApiError>({
+    queryKey: publishKeys.attempts(deliveryId),
+    queryFn: async () => unwrap(await api.GET("/deliveries/{id}/attempts", { params: { path: { id: deliveryId } } })),
+  });
+}
+
+export function useCalendar(from: string, to: string, productId: string | null) {
+  return useQuery<Calendar, ApiError>({
+    queryKey: publishKeys.calendar(from, to, productId),
+    queryFn: async () => unwrap(await api.GET("/calendar", { params: { query: { from, to, ...(productId ? { productId } : {}) } } })),
+    staleTime: 30_000,
+  });
 }

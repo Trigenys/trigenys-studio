@@ -8,6 +8,7 @@ import * as schema from "../../src/db/schema.ts";
 import { roleAssignment, type Role } from "../../src/db/schema.ts";
 import { MockMailer } from "../../src/integrations/mock/mailer.ts";
 import { MemoryMediaStore } from "../../src/integrations/mock/media.ts";
+import type { Integrations } from "../../src/integrations/types.ts";
 
 export const authConfig: AuthConfig = {
   secret: "test-secret-test-secret-test-secret-1234",
@@ -19,13 +20,13 @@ export const authConfig: AuthConfig = {
 
 // A fresh in-memory Postgres per harness, migrated with the committed SQL so
 // the migrations themselves are exercised by every test run.
-export async function createHarness() {
+export async function createHarness(options: { integrations?: Partial<Integrations> } = {}) {
   const client = new PGlite();
   const db = drizzle({ client, schema }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
   const mailer = new MockMailer();
   const media = new MemoryMediaStore();
-  const app = createApp({ db, authConfig, integrations: { email: mailer, media } });
+  const app = createApp({ db, authConfig, integrations: { email: mailer, media, ...options.integrations } });
 
   const request = (path: string, init: RequestInit = {}, token?: string) => {
     const headers = new Headers(init.headers);

@@ -517,3 +517,112 @@ export const visualAsset = pgTable(
     index("visual_asset_task_status_idx").on(t.taskId, t.status),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Publishing: explicit social account mapping per product and channel, and an
+// outbox of deliveries handed to the publisher. Nothing is ever cross-posted
+// by inference: a delivery targets exactly one mapped account, and the account
+// channel must equal the channel of the approved content version.
+// ---------------------------------------------------------------------------
+
+export const SOCIAL_PROVIDERS = ["buffer", "mock"] as const;
+export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+
+export const socialAccount = pgTable(
+  "social_account",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    channel: text("channel").notNull(),
+    provider: text("provider").$type<SocialProvider>().notNull(),
+    // The provider's own identifier of the channel (Buffer channel id).
+    externalRef: text("external_ref").notNull(),
+    handle: text("handle").notNull(),
+    displayName: text("display_name").notNull(),
+    active: boolean("active").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("social_account_provider_ref_idx").on(t.productId, t.provider, t.externalRef),
+    index("social_account_product_channel_idx").on(t.productId, t.channel),
+  ],
+);
+
+export const DELIVERY_STATUSES = ["draft", "scheduled", "sending", "handed_off", "sent", "failed", "cancelled"] as const;
+export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+export const delivery = pgTable(
+  "delivery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    socialAccountId: uuid("social_account_id")
+      .notNull()
+      .references(() => socialAccount.id, { onDelete: "restrict" }),
+    contentVersionId: uuid("content_version_id")
+      .notNull()
+      .references(() => contentVersion.id, { onDelete: "restrict" }),
+    approvalId: uuid("approval_id")
+      .notNull()
+      .references(() => approval.id, { onDelete: "restrict" }),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    status: text("status").$type<DeliveryStatus>().notNull().default("draft"),
+    // sha256(task:account:version:approval): stable across retries, different
+    // as soon as the approved content changes.
+    idempotencyKey: text("idempotency_key").notNull(),
+    externalId: text("external_id"),
+    permalink: text("permalink"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    lastError: text("last_error"),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+    // Lease held while a provider call is in flight; an expired lease is
+    // reconciled, never re-sent blindly.
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("delivery_active_target_idx").on(t.taskId, t.socialAccountId).where(sql`status <> 'cancelled'`),
+    uniqueIndex("delivery_idempotency_key_idx").on(t.idempotencyKey),
+    uniqueIndex("delivery_external_id_idx").on(t.externalId).where(sql`external_id IS NOT NULL`),
+    index("delivery_status_scheduled_idx").on(t.status, t.scheduledAt),
+    index("delivery_task_idx").on(t.taskId),
+  ],
+);
+
+export const ATTEMPT_TRIGGERS = ["cron", "manual", "retry"] as const;
+export type AttemptTrigger = (typeof ATTEMPT_TRIGGERS)[number];
+export const ATTEMPT_OUTCOMES = ["handed_off", "sent", "retryable_error", "fatal_error", "reconciled", "unknown"] as const;
+export type AttemptOutcome = (typeof ATTEMPT_OUTCOMES)[number];
+
+// Append-only send history: one row per provider call (or per refusal
+// decided before the call), kept whatever the delivery becomes.
+export const deliveryAttempt = pgTable(
+  "delivery_attempt",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    deliveryId: uuid("delivery_id")
+      .notNull()
+      .references(() => delivery.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    trigger: text("trigger").$type<AttemptTrigger>().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    outcome: text("outcome").$type<AttemptOutcome>(),
+    externalId: text("external_id"),
+    error: text("error"),
+    retryAfterS: integer("retry_after_s"),
+  },
+  (t) => [uniqueIndex("delivery_attempt_n_idx").on(t.deliveryId, t.n)],
+);

@@ -6,8 +6,10 @@ import type {
   MetricsProvider,
   MetricTarget,
   PublishRequest,
+  ProviderAccount,
   Publisher,
   Radar,
+  RemotePost,
 } from "../types.ts";
 
 // Deterministic mocks: same input, same output, no network. They let every
@@ -21,6 +23,11 @@ async function sha256Hex(input: string): Promise<string> {
 export class MockPublisher implements Publisher {
   readonly name = "mock-publisher";
   readonly published = new Map<string, PublishRequest>();
+  private readonly now: () => Date;
+
+  constructor(options: { now?: () => Date } = {}) {
+    this.now = options.now ?? (() => new Date());
+  }
 
   async publish(request: PublishRequest) {
     const externalId = `mock-${(await sha256Hex(request.idempotencyKey)).slice(0, 12)}`;
@@ -34,6 +41,31 @@ export class MockPublisher implements Publisher {
 
   async cancel(externalId: string) {
     this.published.delete(externalId);
+  }
+
+  // A scheduled mock post is "sent" once its due time has passed.
+  async status(externalId: string): Promise<RemotePost | null> {
+    const request = this.published.get(externalId);
+    if (!request) return null;
+    const due = request.scheduledAt ? new Date(request.scheduledAt) : new Date(0);
+    return due.getTime() <= this.now().getTime()
+      ? { externalId, status: "sent", permalink: `https://example.invalid/${request.channel}/${externalId}` }
+      : { externalId, status: "scheduled" };
+  }
+
+  async lookup(query: { accountRef: string; body: string; since: string }): Promise<RemotePost | null> {
+    for (const [externalId, request] of this.published) {
+      if (request.accountRef === query.accountRef && request.body === query.body) return this.status(externalId);
+    }
+    return null;
+  }
+
+  async listAccounts(): Promise<ProviderAccount[]> {
+    return [
+      { externalRef: "mock-linkedin-1", service: "linkedin", name: "Mock LinkedIn page" },
+      { externalRef: "mock-facebook-1", service: "facebook", name: "Mock Facebook page" },
+      { externalRef: "mock-threads-1", service: "threads", name: "Mock Threads account" },
+    ];
   }
 }
 

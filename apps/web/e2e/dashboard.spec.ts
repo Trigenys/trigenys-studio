@@ -90,6 +90,7 @@ test("keyboard: skip link, views and product filter are reachable and operable",
   await expect(page.locator("#main")).toBeFocused();
 
   await page.keyboard.press("Tab"); // Entrées
+  await page.keyboard.press("Tab"); // Calendrier
   await page.keyboard.press("Tab"); // Nouvelle tâche
   await page.keyboard.press("Tab"); // Tous les produits
   await page.keyboard.press("Tab"); // Trigenys Insight

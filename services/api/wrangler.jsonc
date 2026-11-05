@@ -6,12 +6,18 @@
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
+  // Publishing outbox: hands due deliveries to the provider and polls their status.
+  "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true },
   // Non-secret configuration only. The Neon URI is injected by AppFactory as a
   // Worker secret and reaches the Worker through the Hyperdrive binding.
   "vars": {
     "SERVICE_NAME": "trigenys-studio-api",
     "INTEGRATION_PUBLISHER_MODE": "mock",
+    // live: BUFFER_API_KEY secret (wrangler secret put BUFFER_API_KEY); BUFFER_BASE_URL and
+    // BUFFER_ORGANIZATION_ID optional vars. PUBLISH_LEAD_MINUTES: how early a delivery is handed off.
+    "BUFFER_BASE_URL": "https://api.buffer.com",
+    "PUBLISH_LEAD_MINUTES": "10",
     // live: INSIGHT_BASE_URL var + INSIGHT_PUBLISHING_TOKEN secret (wrangler secret put).
     "INTEGRATION_CMS_MODE": "mock",
     // live: EDITORIAL_OS_BASE_URL var + EDITORIAL_OS_TOKEN secret.

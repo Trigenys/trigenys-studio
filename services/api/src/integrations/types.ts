@@ -1,7 +1,9 @@
 // Integration contracts. Product logic depends on these interfaces only;
 // adapters (mock today, live later) are selected by configuration.
 
-export type Channel = "linkedin" | "x" | "instagram" | "facebook";
+export const SOCIAL_CHANNELS = ["linkedin", "x", "instagram", "facebook", "threads"] as const;
+export type Channel = (typeof SOCIAL_CHANNELS)[number];
+export const isSocialChannel = (value: string): value is Channel => (SOCIAL_CHANNELS as readonly string[]).includes(value);
 
 export type PublishRequest = {
   idempotencyKey: string;
@@ -14,12 +16,28 @@ export type PublishRequest = {
 
 export type PublishResult =
   | { status: "scheduled" | "published"; externalId: string; permalink?: string }
-  | { status: "failed"; error: string; retryable: boolean };
+  | { status: "failed"; error: string; retryable: boolean; retryAfterSeconds?: number; code?: string };
+
+// A channel as the provider knows it, offered to admins to map accounts.
+export type ProviderAccount = { externalRef: string; service: string; name: string };
+
+// What the provider reports about a post it holds.
+export type RemotePost = {
+  externalId: string;
+  status: "scheduled" | "sent" | "error";
+  permalink?: string;
+  error?: string;
+};
 
 export interface Publisher {
   readonly name: string;
   publish(request: PublishRequest): Promise<PublishResult>;
   cancel(externalId: string): Promise<void>;
+  // Optional capabilities. The outbox degrades explicitly without them: no
+  // reconciliation means an uncertain send is failed, never re-sent.
+  listAccounts?(): Promise<ProviderAccount[]>;
+  status?(externalId: string): Promise<RemotePost | null>;
+  lookup?(query: { accountRef: string; body: string; since: string }): Promise<RemotePost | null>;
 }
 
 // What Studio reads from the CMS: enough to preview an article and link it

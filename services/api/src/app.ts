@@ -14,6 +14,8 @@ import { roleRoutes } from "./routes/roles.ts";
 import { brandKitRoutes } from "./routes/brand-kits.ts";
 import { importRoutes } from "./routes/imports.ts";
 import { visualRoutes } from "./routes/visuals.ts";
+import { socialAccountRoutes } from "./routes/social-accounts.ts";
+import { deliveryRoutes } from "./routes/deliveries.ts";
 import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { VERSION } from "./version.ts";
@@ -123,6 +125,8 @@ export function createApp(deps: AppDeps = {}) {
   app.route("/", importRoutes);
   app.route("/", brandKitRoutes);
   app.route("/", visualRoutes);
+  app.route("/", socialAccountRoutes);
+  app.route("/", deliveryRoutes);
 
   return app;
 }
