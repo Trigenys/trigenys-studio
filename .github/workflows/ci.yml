@@ -33,6 +33,22 @@ jobs:
         working-directory: apps/web
       - run: npm test --workspace apps/web
 
+  # Public pages (served by the built preview, no API): screenshots, keyboard and
+  # axe checks, reduced motion, Lighthouse budgets. Authenticated screens are
+  # covered by the Playwright suite of the web job (accessibility.spec.ts).
+  visual-qa:
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'visual-qa') }}
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@8847e4888fc4021060f06ba29f0cf94677ed2d7d
+    with:
+      appfactory_ref: 8847e4888fc4021060f06ba29f0cf94677ed2d7d
+      config_path: .github/appfactory-visual-qa.json
+      install_command: npm install --ignore-scripts --no-audit --no-fund
+      build_command: npm run build --workspace apps/web
+      start_command: npm run preview --workspace apps/web -- --host 127.0.0.1 --port 4173 --strictPort
+      server_url: http://127.0.0.1:4173/
+      node_version: "24"
+
   contracts:
     needs: impact
     if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'contracts') }}
@@ -125,7 +141,7 @@ jobs:
       - run: gradle -p apps/mobile --no-daemon --console=plain :shared:linkDebugFrameworkIosSimulatorArm64
 
   ci-summary:
-    needs: [impact, web, contracts, api, release-config, mobile-android, mobile-ios]
+    needs: [impact, web, visual-qa, contracts, api, release-config, mobile-android, mobile-ios]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -134,6 +150,6 @@ jobs:
           echo "Impacted surfaces: ${{ needs.impact.outputs.surfaces }}"
           echo "Required gates: ${{ needs.impact.outputs.gates }}"
           if [ "${{ needs.impact.result }}" != "success" ]; then exit 1; fi
-          for r in "${{ needs.web.result }}" "${{ needs.contracts.result }}" "${{ needs.api.result }}" "${{ needs.release-config.result }}" "${{ needs.mobile-android.result }}" "${{ needs.mobile-ios.result }}"; do
+          for r in "${{ needs.web.result }}" "${{ needs.visual-qa.result }}" "${{ needs.contracts.result }}" "${{ needs.api.result }}" "${{ needs.release-config.result }}" "${{ needs.mobile-android.result }}" "${{ needs.mobile-ios.result }}"; do
             case "$r" in success|skipped) ;; *) exit 1 ;; esac
           done

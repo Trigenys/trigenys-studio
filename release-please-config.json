@@ -23,6 +23,12 @@
       "extra-files": [
         "package.json"
       ]
+    },
+    "apps/mobile": {
+      "component": "mobile",
+      "extra-files": [
+        "androidApp/build.gradle.kts"
+      ]
     }
   }
 }

@@ -1,0 +1,10 @@
+# Local Worker secrets for `wrangler dev` (copy to .dev.vars, never committed).
+# Production and staging values are set with `wrangler secret put <NAME>` or by
+# AppFactory; see docs/operations.md.
+
+# Better Auth signing secret: 32+ random bytes, e.g. `openssl rand -base64 32`.
+AUTH_SECRET=change-me-locally
+# Passkey relying-party id (host without scheme). Empty = derived from AUTH_BASE_URL.
+PASSKEY_RP_ID=localhost
+# Neon dev-branch URI reaching the Worker through the Hyperdrive binding.
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@host/db?sslmode=require

@@ -21,7 +21,7 @@
     },
     "web": {
       "paths": ["apps/web/**"],
-      "gates": ["web"],
+      "gates": ["web", "visual-qa"],
       "dependsOn": ["contracts"]
     },
     "mobile": {
@@ -37,13 +37,14 @@
       "paths": [
         ".release-please-manifest.json",
         "release-please-config.json",
-        ".github/workflows/release.yml"
+        ".github/workflows/release.yml",
+        "apps/mobile/androidApp/build.gradle.kts"
       ],
       "gates": ["release-config"]
     },
     "ci": {
-      "paths": [".github/appfactory-impact.json", ".github/workflows/ci.yml"],
-      "gates": ["web", "api", "contracts", "mobile-android", "mobile-ios"]
+      "paths": [".github/appfactory-impact.json", ".github/appfactory-visual-qa.json", ".github/workflows/ci.yml"],
+      "gates": ["web", "visual-qa", "api", "contracts", "mobile-android", "mobile-ios"]
     }
   }
 }

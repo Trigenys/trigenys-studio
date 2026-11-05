@@ -114,3 +114,14 @@ test("reviewer approves from the task page", async ({ page }) => {
   await expect(page.locator(".chip-state")).toHaveText("Approuvée");
   await expect(page.getByRole("button", { name: "Approuver" })).toHaveCount(0);
 });
+
+test("reviewer rejects from the task page", async ({ page }) => {
+  await mockApi(page);
+  await page.goto(`/tasks/${tasks[1]!.id}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Édito de novembre");
+  await page.getByLabel("Commentaire (facultatif)").fill("Le titre ne reflète pas l'édito.");
+  await page.getByRole("button", { name: "Rejeter" }).click();
+  await expect(page.locator(".chip-state")).toHaveText("Rejetée");
+  await expect(page.getByRole("button", { name: "Rejeter" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approuver" })).toHaveCount(0);
+});
