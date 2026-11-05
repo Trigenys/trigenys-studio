@@ -113,6 +113,8 @@ export const TaskDetailSchema = TaskSchema.extend({
   latestVersion: z.union([ContentVersionSchema, z.null()]),
   latestApproval: z.union([ApprovalSchema, z.null()]),
   approvalValid: z.boolean(),
+  // Hash of the active visuals; an approval is valid only while it matches.
+  currentAssetSetHash: z.string(),
   // What the caller may do next; the server re-checks on every request.
   allowedTransitions: z.array(z.enum(TASK_STATES)),
 }).openapi("TaskDetail");
@@ -211,6 +213,7 @@ async function detail(s: TaskSnapshot, principal: Principal) {
     latestVersion: s.latestVersion ? serialiseVersion(s.latestVersion) : null,
     latestApproval: s.latestApproval ? serialiseApproval(s.latestApproval) : null,
     approvalValid: await approvalIsValid(s),
+    currentAssetSetHash: await assetSetHashOf(s),
     allowedTransitions: await allowedTransitions(s, principal),
   };
 }
@@ -255,9 +258,15 @@ export async function insertVersion(
       authorId: principal.userId,
     })
     .returning();
-  const back = pipelineDefinition.invalidatedBy[s.task.state];
-  if (back) await applyTransition(tx, s, back, principal.userId, "content changed after submission");
+  await invalidateIfDecided(tx, s, principal, "content changed after submission");
   return row!;
+}
+
+// A submitted or approved task whose content or visuals change goes back to
+// preparing: the approval it carried was granted on other hashes.
+export async function invalidateIfDecided(tx: Tx, s: TaskSnapshot, principal: Principal, reason: string): Promise<void> {
+  const back = pipelineDefinition.invalidatedBy[s.task.state];
+  if (back) await applyTransition(tx, s, back, principal.userId, reason);
 }
 
 // Products the principal may read; null means all of them.

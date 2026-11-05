@@ -4,6 +4,8 @@ import { EditorialOsRadar } from "./editorial-os/radar.ts";
 import { InsightCms } from "./insight/cms.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
+import { MemoryMediaStore } from "./mock/media.ts";
+import { R2MediaStore } from "./r2/media.ts";
 import type { Integrations } from "./types.ts";
 
 export class IntegrationNotAvailableError extends Error {
@@ -16,6 +18,10 @@ export class IntegrationNotAvailableError extends Error {
 // Live adapters, one per integration kind, built from the Worker bindings.
 // A missing secret is an explicit, actionable error at request time.
 const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations[K] }> = {
+  media: (env) => {
+    if (!env.VISUALS) throw new IntegrationNotAvailableError("media", "live", "INTEGRATION_MEDIA_MODE=live requires the VISUALS R2 bucket binding");
+    return new R2MediaStore(env.VISUALS);
+  },
   llm: (env) => {
     if (!env.ANTHROPIC_API_KEY) {
       throw new IntegrationNotAvailableError("llm", "live", 'INTEGRATION_LLM_MODE=live requires the ANTHROPIC_API_KEY secret');
@@ -48,6 +54,7 @@ export function integrationModes(env: Bindings): Record<keyof Integrations, Inte
     metrics: normalise(env.INTEGRATION_METRICS_MODE),
     llm: normalise(env.INTEGRATION_LLM_MODE),
     email: normalise(env.INTEGRATION_EMAIL_MODE),
+    media: normalise(env.INTEGRATION_MEDIA_MODE),
   };
 }
 
@@ -70,6 +77,7 @@ export function createIntegrations(env: Bindings, overrides: Partial<Integration
     metrics: new MockMetrics(),
     llm: new MockLlm(),
     email: new MockMailer((line) => console.log(line)),
+    media: new MemoryMediaStore(),
     ...selected,
     ...overrides,
   };

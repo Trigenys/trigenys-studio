@@ -8,6 +8,7 @@ import { Dossier } from "../components/Dossier";
 import { ErrorState, Loading } from "../components/States";
 import { TaskEditForm } from "../components/TaskEditForm";
 import { VersionForm, VersionHistory } from "../components/VersionEditor";
+import { VisualsSection } from "../components/VisualsSection";
 import { dateFmt } from "../components/dates";
 import { FROZEN_STATES, STATE_LABELS, canReview, canWrite } from "../views";
 
@@ -114,6 +115,11 @@ export function TaskPage({ me }: { me: Me }) {
       <section aria-labelledby="dossier-title" className="card">
         <h2 id="dossier-title">Dossier</h2>
         <Dossier taskId={t.id} writer={writer && !frozen} />
+      </section>
+
+      <section aria-labelledby="visuals-title" className="card">
+        <h2 id="visuals-title">Visuels</h2>
+        <VisualsSection taskId={t.id} taskTitle={t.title} writer={writer && !frozen} />
       </section>
 
       <section aria-labelledby="assistant-title" className="card">

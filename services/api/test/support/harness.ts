@@ -7,6 +7,7 @@ import type { Db } from "../../src/db/client.ts";
 import * as schema from "../../src/db/schema.ts";
 import { roleAssignment, type Role } from "../../src/db/schema.ts";
 import { MockMailer } from "../../src/integrations/mock/mailer.ts";
+import { MemoryMediaStore } from "../../src/integrations/mock/media.ts";
 
 export const authConfig: AuthConfig = {
   secret: "test-secret-test-secret-test-secret-1234",
@@ -23,7 +24,8 @@ export async function createHarness() {
   const db = drizzle({ client, schema }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
   const mailer = new MockMailer();
-  const app = createApp({ db, authConfig, integrations: { email: mailer } });
+  const media = new MemoryMediaStore();
+  const app = createApp({ db, authConfig, integrations: { email: mailer, media } });
 
   const request = (path: string, init: RequestInit = {}, token?: string) => {
     const headers = new Headers(init.headers);
@@ -58,7 +60,7 @@ export async function createHarness() {
     await db.insert(roleAssignment).values({ userId, role, productId });
   };
 
-  return { app, db, mailer, request, signIn, userIdOf, grant, close: () => client.close() };
+  return { app, db, mailer, media, request, signIn, userIdOf, grant, close: () => client.close() };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

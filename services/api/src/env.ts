@@ -22,6 +22,9 @@ export type Bindings = {
   INTEGRATION_METRICS_MODE?: IntegrationMode;
   INTEGRATION_LLM_MODE?: IntegrationMode;
   INTEGRATION_EMAIL_MODE?: IntegrationMode;
+  // Logos and rendered visuals: private R2 bucket in live mode, memory in mock mode.
+  INTEGRATION_MEDIA_MODE?: IntegrationMode;
+  VISUALS?: R2Bucket;
   // Live LLM adapter (INTEGRATION_LLM_MODE=live). ANTHROPIC_API_KEY is a
   // Worker secret (wrangler secret put), never a var; LLM_MODEL is optional.
   ANTHROPIC_API_KEY?: string;

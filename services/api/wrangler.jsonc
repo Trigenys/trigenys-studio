@@ -21,6 +21,8 @@
     // LLM_MODEL (optional var) overrides the default model of the adapter.
     "INTEGRATION_LLM_MODE": "mock",
     "INTEGRATION_EMAIL_MODE": "mock",
+    // live: objects go to the private VISUALS bucket below (memory otherwise, not durable).
+    "INTEGRATION_MEDIA_MODE": "mock",
     // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).
     "AUTH_BASE_URL": "http://localhost:8787",
     "AUTH_TRUSTED_ORIGINS": "http://localhost:5173",
@@ -30,5 +32,9 @@
   // Locally, set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE to a dev branch URI.
   "hyperdrive": [
     { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }
+  ],
+  // Logos and rendered visuals, never public: served by the API after RBAC.
+  "r2_buckets": [
+    { "binding": "VISUALS", "bucket_name": "trigenys-studio-visuals" }
   ]
 }
