@@ -256,3 +256,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Le job `web` de la CI échouait (18 tests axe) : contraste des pastilles `warn`/`success` en clair et `aria-label` du lien Alertes différent du texte visible. Le vert local précédent venait d'un serveur Vite réutilisé sur le port 5190 (LESSON-STUDIO-2026-009).
 - Correctifs : tokens `--warn` #854d0e / `--success` #166534 (clair), suffixe `visually-hidden` « à traiter » à la place de l'`aria-label`, helper axe qui affiche fg/bg/ratio. Suite complète : 116 tests verts, build vert.
 - Prochaine étape : CI verte sur le nouveau commit, puis go utilisateur pour fusion en squash.
+
+## 2026-11-06 16:17 — PR #40 : barre de filtres des alertes
+
+- Retour utilisateur : les filtres État / Priorité / Produit de /alerts étaient empilés sans libellé.
+- Correctif 64e19ec : wrapper `.filters` (flex, bordures haut/bas), `.filter-group` avec libellé visible `.filter-label` (aria-label conservé).
+- Preuves : 116 e2e passés (port 5190 libre), `npm run build` vert, rendu vérifié dans le navigateur.
+- En attente : CI sur 64e19ec puis accord utilisateur pour le squash merge de la PR #40.
