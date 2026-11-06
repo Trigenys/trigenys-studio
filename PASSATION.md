@@ -275,3 +275,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Branche `feat/web-brand-palette` (depuis main 6310a30), PR #41 : tokens clair/sombre alignés sur le design system V4 du Drive (bordeaux #7F2044, prune #55162F, turquoise #138F8D assombri en #0f6f6d pour AA, rose #E7A2B6, encre #251C2A, crème #FCFAFB), favicon + theme-color, « Studio » en accent.
 - Preuves : 116 e2e verts (axe AA inclus), build OK, visuel clair/sombre vérifié.
 - Prochaine étape : CI verte → attendre le « ok » de l'utilisateur pour squash-merge, puis entrée passation.
+
+## 2026-11-06 16:50 — Fusion de la PR #41 (palette Trigenys)
+
+- PR #41 fusionnée en squash sur main (0677cbf), branche feat/web-brand-palette supprimée. Local sur main à jour.
+- Le web utilise désormais la palette du design system V4 (Drive) ; le bleu générique a disparu.
+- Prochaine étape : attendre la prochaine consigne de l'utilisateur (pistes possibles : logo officiel SVG du pack V4 à la place du « T » du favicon, polices Urbanist / Plus Jakarta Sans du brand book à la place de Geist).
