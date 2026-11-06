@@ -210,3 +210,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - `services/api/scripts/bootstrap-local.sql` : premier admin + 3 produits, idempotent, couvert par `test/bootstrap-local.test.ts` (PGlite, rejoué deux fois).
 - README « Tester l'application en local » : Neon dev branch → `.dev.vars` → `db:migrate` → `wrangler dev` + Vite → lien magique dans la console (`[mock-mailer]`) → bootstrap SQL.
 - Reste : l'utilisateur crée la branche Neon et renseigne `.dev.vars` lui-même (jamais commis).
+
+## 2026-11-06 10:31 — PR #38 en attente de CI (facturation Actions)
+
+- PR #38 (`fix/local-dev`, tête `cfa8967`) : proxy Vite dérivé d'openapi.json, bootstrap SQL testé, README test local. Vérifications locales vertes (tsc web/api, vite build, test PGlite).
+- CI bloquée : GitHub Actions refuse de démarrer les jobs (« recent account payments have failed or your spending limit needs to be increased »). Verrou propriétaire : Billing & plans de l'organisation Trigenys.
+- Décision utilisateur : attendre la CI, ne pas merger sans. Prochaine étape : une fois la facturation réglée, relancer les checks (`gh pr checks 38 --watch`) puis merger en squash sur accord.
