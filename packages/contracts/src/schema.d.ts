@@ -4493,6 +4493,292 @@ export interface paths {
         };
         trace?: never;
     };
+    "/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alerts the caller is responsible for (active by default, resolved ones over the last 30 days) */
+        get: {
+            parameters: {
+                query?: {
+                    state?: "active" | "open" | "acknowledged" | "resolved";
+                    priority?: "p1" | "p2" | "p3";
+                    productId?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Alerts, highest priority first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Alert"][];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge an alert (audited; a second call is a no-op) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Acknowledged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Alert"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not in the audience of the alert */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown alert */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Already resolved */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the alert reconciliation and send queued e-mails now (admin, idempotent) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Replays an identical request */
+                    "idempotency-key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlertReconcileReport"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Idempotency-Key reused for a different request */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** E-mail preference of the caller per alert kind (defaults when unset) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Preferences */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationPreference"][];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the caller's e-mail preferences (audited; unchanged values write nothing) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateNotificationPreferences"];
+                };
+            };
+            responses: {
+                /** @description Preferences */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationPreference"][];
+                    };
+                };
+                /** @description Unknown kind or mode */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5242,6 +5528,72 @@ export interface components {
             version: number;
             target?: number;
             active?: boolean;
+        };
+        Alert: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "task_blocked" | "content_fix" | "approval_required" | "publication_failed";
+            /** @enum {string} */
+            priority: "p1" | "p2" | "p3";
+            /** @enum {string} */
+            state: "open" | "acknowledged" | "resolved";
+            productId: string;
+            /** Format: uuid */
+            taskId: string;
+            taskTitle: string;
+            /** @enum {string} */
+            taskState: "qualifying" | "preparing" | "reviewing" | "visuals" | "awaiting_approval" | "approved" | "scheduled" | "published" | "measured" | "needs_fix" | "rejected" | "failed";
+            /** Format: uuid */
+            deliveryId: string | null;
+            title: string;
+            detail: string;
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            firstSeenAt: string;
+            acknowledgedBy: string | null;
+            /** Format: date-time */
+            acknowledgedAt: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolution: string | null;
+            /** @enum {string} */
+            emailStatus: "none" | "pending" | "sent" | "failed";
+            version: number;
+        };
+        AlertReconcileReport: {
+            reconcile: {
+                opened: number;
+                updated: number;
+                escalated: number;
+                resolved: number;
+                queued: number;
+            };
+            notify: {
+                claimed: number;
+                sent: number;
+                retried: number;
+                failed: number;
+                skipped: number;
+            };
+        };
+        NotificationPreference: {
+            /** @enum {string} */
+            kind: "task_blocked" | "content_fix" | "approval_required" | "publication_failed";
+            /** @enum {string} */
+            email: "off" | "immediate";
+            /** @enum {string} */
+            source: "default" | "user";
+        };
+        UpdateNotificationPreferences: {
+            preferences: {
+                /** @enum {string} */
+                kind: "task_blocked" | "content_fix" | "approval_required" | "publication_failed";
+                /** @enum {string} */
+                email: "off" | "immediate";
+            }[];
         };
     };
     responses: never;

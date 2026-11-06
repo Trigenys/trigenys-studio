@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  Alert,
+  AlertReconcileReport,
+  NotificationPreference,
+  UpdateNotificationPreferences,
   AiInteraction,
   Calendar,
   ContractObjective,
@@ -118,6 +122,7 @@ function useTaskChanged(id: string) {
     qc.setQueryData(keys.task(id), detail);
     void qc.invalidateQueries({ queryKey: ["tasks"] });
     void qc.invalidateQueries({ queryKey: keys.transitions(id) });
+    void qc.invalidateQueries({ queryKey: ["alerts"] });
   };
 }
 
@@ -474,6 +479,7 @@ function useDeliveryMutation<TVars>(taskId: string, run: (vars: TVars) => Promis
       void qc.invalidateQueries({ queryKey: publishKeys.deliveries(taskId) });
       void qc.invalidateQueries({ queryKey: keys.task(taskId) });
       void qc.invalidateQueries({ queryKey: ["calendar"] });
+      void qc.invalidateQueries({ queryKey: ["alerts"] });
     },
   });
 }
@@ -590,5 +596,57 @@ export function useRefreshMetrics() {
   return useMutation<MetricsRefreshReport, ApiError, void>({
     mutationFn: async () => unwrap(await api.POST("/reports/metrics/refresh", { params: { header: idempotencyKey() }, body: {} })),
     onSuccess: invalidate,
+  });
+}
+
+// Alerts (ADR 0011): derived state the server reconciles; the client only
+// reads, acknowledges and sets its own e-mail preferences.
+
+export type AlertFilters = {
+  state?: "active" | "open" | "acknowledged" | "resolved";
+  priority?: Alert["priority"];
+  productId?: string;
+};
+
+export const alertKeys = {
+  list: (filters: AlertFilters) => ["alerts", filters.state ?? "active", filters.priority ?? "all", filters.productId ?? "all"] as const,
+  preferences: ["notification-preferences"] as const,
+};
+
+export function useAlerts(filters: AlertFilters = {}) {
+  return useQuery<Alert[], ApiError>({
+    queryKey: alertKeys.list(filters),
+    queryFn: async () => unwrap(await api.GET("/alerts", { params: { query: filters } })),
+  });
+}
+
+export function useAcknowledgeAlert() {
+  const qc = useQueryClient();
+  return useMutation<Alert, ApiError, string>({
+    mutationFn: async (id) => unwrap(await api.POST("/alerts/{id}/acknowledge", { params: { path: { id } } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["alerts"] }),
+  });
+}
+
+export function useReconcileAlerts() {
+  const qc = useQueryClient();
+  return useMutation<AlertReconcileReport, ApiError, void>({
+    mutationFn: async () => unwrap(await api.POST("/alerts/reconcile", { params: { header: idempotencyKey() } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["alerts"] }),
+  });
+}
+
+export function useNotificationPreferences() {
+  return useQuery<NotificationPreference[], ApiError>({
+    queryKey: alertKeys.preferences,
+    queryFn: async () => unwrap(await api.GET("/me/notification-preferences")),
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation<NotificationPreference[], ApiError, UpdateNotificationPreferences>({
+    mutationFn: async (body) => unwrap(await api.PATCH("/me/notification-preferences", { body })),
+    onSuccess: (data) => qc.setQueryData(alertKeys.preferences, data),
   });
 }

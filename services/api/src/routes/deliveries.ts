@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { reconcileTaskAlerts } from "../alerts/reconcile.ts";
 import { audited, recordAudit } from "../auth/audit.ts";
 import { authorize } from "../auth/middleware.ts";
 import type { Principal, Resource } from "../auth/rbac.ts";
@@ -550,6 +551,7 @@ export const deliveryRoutes = new OpenAPIHono<AppEnv>()
         return updated;
       },
     );
+    await reconcileTaskAlerts(c.var.db, row.taskId, c.var.principal!, c.var.requestId);
     return c.json(serialiseDelivery(row), 200);
   })
 
@@ -597,6 +599,7 @@ export const deliveryRoutes = new OpenAPIHono<AppEnv>()
         return updated;
       },
     );
+    await reconcileTaskAlerts(c.var.db, row.taskId, c.var.principal!, c.var.requestId);
     return c.json(serialiseDelivery(row), 200);
   })
 

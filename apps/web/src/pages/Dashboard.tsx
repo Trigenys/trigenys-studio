@@ -1,7 +1,7 @@
 import type { Me } from "@trigenys/studio-contracts";
 import { useDeferredValue, useMemo } from "react";
 import { Link, NavLink, Navigate, useParams, useSearchParams } from "react-router";
-import { useProducts, useTasks } from "../api/queries";
+import { useAlerts, useProducts, useTasks } from "../api/queries";
 import { Empty, ErrorState, Loading } from "../components/States";
 import { TaskList } from "../components/TaskList";
 import { VIEWS, searchTasks, sortTasks, viewById } from "../views";
@@ -16,6 +16,8 @@ export function DashboardPage({ me }: { me: Me }) {
 
   const products = useProducts();
   const tasks = useTasks(productId);
+  const alerts = useAlerts({ state: "open" });
+  const openAlerts = alerts.data?.length ?? 0;
   const now = useMemo(() => new Date(), [tasks.dataUpdatedAt]);
 
   const productNames = useMemo(() => new Map((products.data ?? []).map((p) => [p.id, p.name])), [products.data]);
@@ -53,6 +55,9 @@ export function DashboardPage({ me }: { me: Me }) {
           </Link>
           <Link to="/reports" className="btn">
             Rapports
+          </Link>
+          <Link to="/alerts" className="btn" aria-label={`Alertes, ${openAlerts} à traiter`}>
+            Alertes{openAlerts ? ` (${openAlerts})` : ""}
           </Link>
           {me.grants.some((g) => g.role === "admin") ? (
             <>

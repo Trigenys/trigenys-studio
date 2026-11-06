@@ -691,3 +691,102 @@ export const metricSnapshot = pgTable(
     index("metric_snapshot_product_idx").on(t.productId, t.measuredAt),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Alerts (ADR 0011): derived state written by one reconciler. An alert names
+// one thing that needs a human decision and points at the task to fix; the
+// partial unique index keeps one unresolved alert per dedup key. Alerts are
+// acknowledged by people and resolved by the reconciler only.
+// ---------------------------------------------------------------------------
+
+export const ALERT_KINDS = ["task_blocked", "content_fix", "approval_required", "publication_failed"] as const;
+export type AlertKind = (typeof ALERT_KINDS)[number];
+export const ALERT_PRIORITIES = ["p1", "p2", "p3"] as const;
+export type AlertPriority = (typeof ALERT_PRIORITIES)[number];
+export const ALERT_STATES = ["open", "acknowledged", "resolved"] as const;
+export type AlertState = (typeof ALERT_STATES)[number];
+
+export const alert = pgTable(
+  "alert",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind", { enum: ALERT_KINDS }).notNull(),
+    priority: text("priority", { enum: ALERT_PRIORITIES }).notNull(),
+    state: text("state", { enum: ALERT_STATES }).notNull().default("open"),
+    dedupKey: text("dedup_key").notNull(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    deliveryId: uuid("delivery_id").references(() => delivery.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    detail: text("detail").notNull().default(""),
+    facts: jsonb("facts").$type<Record<string, unknown>>().notNull().default({}),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+    acknowledgedBy: text("acknowledged_by").references(() => user.id, { onDelete: "set null" }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolution: text("resolution"),
+    version: integer("version").notNull().default(1),
+  },
+  (t) => [
+    uniqueIndex("alert_active_dedup_idx").on(t.dedupKey).where(sql`state <> 'resolved'`),
+    index("alert_product_state_priority_idx").on(t.productId, t.state, t.priority),
+    index("alert_task_idx").on(t.taskId),
+  ],
+);
+
+export const NOTIFICATION_EMAIL_MODES = ["off", "immediate"] as const;
+export type NotificationEmailMode = (typeof NOTIFICATION_EMAIL_MODES)[number];
+
+// Per-user, per-kind e-mail preference. Absent row = the default of the kind.
+export const notificationPreference = pgTable(
+  "notification_preference",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ALERT_KINDS }).notNull(),
+    email: text("email", { enum: NOTIFICATION_EMAIL_MODES }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("notification_preference_user_kind_idx").on(t.userId, t.kind)],
+);
+
+export const DISPATCH_STATUSES = ["pending", "sending", "sent", "failed", "skipped"] as const;
+export type DispatchStatus = (typeof DISPATCH_STATUSES)[number];
+
+// At-most-once e-mail outbox: one row per (alert, recipient, priority), sent
+// by the notifier with a lease, retried with backoff, never sent twice.
+export const notificationDispatch = pgTable(
+  "notification_dispatch",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    alertId: uuid("alert_id")
+      .notNull()
+      .references(() => alert.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull().default("email"),
+    dedupKey: text("dedup_key").notNull(),
+    status: text("status", { enum: DISPATCH_STATUSES }).notNull().default("pending"),
+    priority: text("priority", { enum: ALERT_PRIORITIES }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    provider: text("provider"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("notification_dispatch_dedup_idx").on(t.dedupKey),
+    index("notification_dispatch_status_idx").on(t.status, t.nextRetryAt),
+    index("notification_dispatch_alert_idx").on(t.alertId),
+  ],
+);

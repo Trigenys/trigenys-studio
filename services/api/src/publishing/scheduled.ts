@@ -1,3 +1,6 @@
+import { dispatchNotifications, type NotifyReport } from "../alerts/notify.ts";
+import { reconcileAlerts, type ReconcileReport } from "../alerts/reconcile.ts";
+import { DEFAULT_ALERT_TUNING, type AlertTuning } from "../alerts/rules.ts";
 import { createDb } from "../db/client.ts";
 import type { Bindings } from "../env.ts";
 import { createIntegrations } from "../integrations/registry.ts";
@@ -43,4 +46,40 @@ export async function runScheduledMetrics(env: Bindings): Promise<MetricsRefresh
   const report = await refreshMetrics({ db, provider: metrics, ...metricsTuning(env) });
   console.log("metrics", JSON.stringify(report));
   return report;
+}
+
+const hoursOr = (raw: string | undefined, fallback: number) => {
+  const n = Number(raw?.trim() || Number.NaN);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+};
+
+export function alertTuning(env: Bindings): AlertTuning {
+  return {
+    approvalHours: hoursOr(env.ALERT_APPROVAL_HOURS, DEFAULT_ALERT_TUNING.approvalHours),
+    stallHours: hoursOr(env.ALERT_STALL_HOURS, DEFAULT_ALERT_TUNING.stallHours),
+    dueSoonHours: hoursOr(env.ALERT_DUE_SOON_HOURS, DEFAULT_ALERT_TUNING.dueSoonHours),
+  };
+}
+
+// Base of the links in notification e-mails: WEB_APP_URL, else the first
+// trusted browser origin, else nothing (and nothing is sent).
+export function webAppUrl(env: Bindings): string | null {
+  const explicit = env.WEB_APP_URL?.trim();
+  if (explicit) return explicit;
+  const first = env.AUTH_TRUSTED_ORIGINS?.split(",").map((s) => s.trim()).find((s) => s.length > 0);
+  return first ?? null;
+}
+
+// Alerts after the outbox on the same cron: reconcile first (needs only the
+// database), then send what was queued. A mailer that cannot be built in
+// live mode fails the sending, not the reconciliation.
+export async function runScheduledAlerts(env: Bindings): Promise<{ reconcile: ReconcileReport; notify: NotifyReport | null }> {
+  if (!env.HYPERDRIVE) throw new Error("HYPERDRIVE binding is required for the scheduled alerts");
+  const db = createDb(env.HYPERDRIVE.connectionString);
+  const reconcile = await reconcileAlerts({ db, tuning: alertTuning(env) });
+  console.log("alerts", JSON.stringify(reconcile));
+  const { email } = createIntegrations(env);
+  const notify = await dispatchNotifications({ db, mailer: email, webAppUrl: webAppUrl(env) });
+  console.log("notifications", JSON.stringify(notify));
+  return { reconcile, notify };
 }

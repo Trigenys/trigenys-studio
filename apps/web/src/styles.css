@@ -77,6 +77,9 @@ a { color: var(--accent); }
 .chip-state.state-awaiting_approval { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
 .chip-state.state-scheduled, .chip-state.state-approved { color: var(--accent); border-color: rgba(157, 164, 255, 0.4); }
 .chip-state.state-needs_fix, .chip-state.state-rejected, .chip-state.state-failed { color: var(--danger); border-color: rgba(248, 113, 113, 0.4); }
+.chip-state.priority-p1, .chip-state.state-open { color: var(--danger); border-color: rgba(248, 113, 113, 0.4); }
+.chip-state.priority-p2 { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
+.chip-state.priority-p3, .chip-state.state-acknowledged { color: var(--accent); border-color: rgba(157, 164, 255, 0.4); }
 
 .chip-btn {
   padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted);

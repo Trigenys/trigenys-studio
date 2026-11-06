@@ -121,7 +121,7 @@ export interface Llm {
 
 export type Mail = {
   to: string;
-  template: "magic-link";
+  template: "magic-link" | "alert";
   subject: string;
   text: string;
 };

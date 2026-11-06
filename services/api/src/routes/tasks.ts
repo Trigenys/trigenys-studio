@@ -1,8 +1,9 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, asc, desc, eq, inArray, lte, type SQL } from "drizzle-orm";
+import { reconcileTaskAlerts } from "../alerts/reconcile.ts";
 import { audited, recordAudit } from "../auth/audit.ts";
 import { authorize, requireSession } from "../auth/middleware.ts";
-import { decide, type Principal } from "../auth/rbac.ts";
+import { decide, readableProducts, type Principal } from "../auth/rbac.ts";
 import type { Db, Tx } from "../db/client.ts";
 import {
   APPROVAL_DECISIONS,
@@ -268,10 +269,6 @@ export async function invalidateIfDecided(tx: Tx, s: TaskSnapshot, principal: Pr
   const back = pipelineDefinition.invalidatedBy[s.task.state];
   if (back) await applyTransition(tx, s, back, principal.userId, reason);
 }
-
-// Products the principal may read; null means all of them.
-const readableProducts = (p: Principal): string[] | null =>
-  p.grants.some((g) => g.productId === null) ? null : [...new Set(p.grants.map((g) => g.productId!))];
 
 // ---------------------------------------------------------------------------
 // Routes
@@ -698,6 +695,7 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
           return requestTransition(tx, locked, body.to, principal.userId, body.reason).catch(asProblem);
         },
       ).catch(asProblem);
+      await reconcileTaskAlerts(db, id, principal, c.var.requestId);
       const s = await snapshotOr404(db, id);
       return { status: 200 as const, body: await detail(s, principal) };
     });
@@ -770,6 +768,7 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
           await applyTransition(tx, s, decided[body.decision], principal.userId, body.comment);
         },
       );
+      await reconcileTaskAlerts(db, id, principal, c.var.requestId);
       const s = await snapshotOr404(db, id);
       return { status: 201 as const, body: await detail(s, principal) };
     });
