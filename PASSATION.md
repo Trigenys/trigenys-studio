@@ -244,3 +244,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Fichiers : `apps/web/src/styles.css` réécrit ; `Shell.tsx` porte la navigation (compteur d'alertes, section Réglages admin) ; `Dashboard.tsx` n'a plus de liens de navigation ; tirets cadratins retirés des textes ; `index.html`, `favicon.svg`, deux specs e2e ajustées (ordre de tabulation, texte du lien Alertes).
 - Piège : sur mobile, `.shell` (grille, min-height 100vh) répartissait l'espace libre entre l'en-tête et le contenu → en-tête de 197 px ; corrigé avec `grid-template-rows: auto 1fr` dans le bloc ≤ 900 px.
 - État : build et e2e verts avant le correctif mobile, relance en cours ; reste à committer (sans `.claude/`), ouvrir la PR avec revue RAIDER et captures, attendre la CI, puis demander le go de fusion.
+
+## 2026-11-06 14:25 — PR #40 ouverte : refonte visuelle du cockpit
+
+- PR #40 (`feat/web-visual-redesign`, commit 1cadbcc) : refonte visuelle complète, preuves dans la PR (build, 98 e2e Playwright, captures). CI verte (contracts, visual-qa, impact, sync-project).
+- En attente du go utilisateur pour fusion (`gh pr merge 40 --repo Trigenys/trigenys-studio --squash --delete-branch`).
+- Serveurs locaux toujours lancés : Worker 8787, web 5175, Docker `trigenys-studio-pg`.
