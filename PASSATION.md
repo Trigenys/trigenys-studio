@@ -216,3 +216,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #38 (`fix/local-dev`, tête `cfa8967`) : proxy Vite dérivé d'openapi.json, bootstrap SQL testé, README test local. Vérifications locales vertes (tsc web/api, vite build, test PGlite).
 - CI bloquée : GitHub Actions refuse de démarrer les jobs (« recent account payments have failed or your spending limit needs to be increased »). Verrou propriétaire : Billing & plans de l'organisation Trigenys.
 - Décision utilisateur : attendre la CI, ne pas merger sans. Prochaine étape : une fois la facturation réglée, relancer les checks (`gh pr checks 38 --watch`) puis merger en squash sur accord.
+
+## 2026-11-06 13:02 — Dépôt public, exécution locale de l'app, correction des variables Hyperdrive
+
+- Dépôt `Trigenys/trigenys-studio` passé en public pour débloquer GitHub Actions ; PR #37 et #38 fusionnées, CI verte.
+- Application lancée en local et vérifiée dans le navigateur : connexion par magic link (lien lu dans la console du Worker, `[mock-mailer]`), rôle admin via `services/api/scripts/bootstrap-local.sql`, tableau de bord avec les trois produits.
+- Base locale : conteneur Docker `trigenys-studio-pg` (postgres:16-alpine, port hôte `127.0.0.1:5434`, base `studio`), migrations appliquées avec psql car `drizzle-kit migrate` reste muet.
+- Pièges rencontrés : wrangler 4 attend `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` **dans l'environnement du processus** (ignoré dans `.dev.vars`) ; `localhost` et un conteneur créé sans port publié actif font pendre la connexion → `127.0.0.1` + `?sslmode=disable` ; Vite tombé sur 5175 → origine ajoutée à `AUTH_TRUSTED_ORIGINS` dans `.dev.vars`.
+- Branche `fix/local-dev-hyperdrive` : README et `.dev.vars.example` corrigés (variable, Docker, psql de secours). Config de lancement locale dans `.claude/launch.json` (non versionné).
+- Verrous propriétaire inchangés : Neon/Hyperdrive de staging, compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, suppression du Project #25 (#15).
