@@ -232,3 +232,8 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - App locale : Docker `trigenys-studio-pg` (127.0.0.1:5434), Worker 8787, web 5175 (`.claude/launch.json`, non versionné) ; compte admin = adresse de l'utilisateur ; les variables locales sont dans `services/api/.dev.vars` (non commis).
 - Suite API complète instable en parallèle localement (« PGlite is closed ») quand les serveurs dev tournent ; passe en série (`--no-file-parallelism`, 147/147).
 - Prochaine étape : à la demande de l'utilisateur (tester l'app dans le navigateur, ou déploiement staging qui dépend des verrous propriétaire Neon/Cloudflare).
+
+## 2026-11-06 14:00 — Retour utilisateur : interface jugée laide
+
+- L'utilisateur juge l'UI web laide. Constat : aucun skill design (frontend-design, design-taste-frontend, high-end-visual-design, ux-ui-cx-excellence) n'a été invoqué lors des incréments web ; `apps/web/src/styles.css` (274 lignes) est un thème sombre générique (Inter, accent indigo, dégradés radiaux) sur 10 pages.
+- Prochaine étape proposée : incrément « refonte visuelle » — audit UX/UI d'abord, direction de design assumée, refonte du système de styles et des pages, preuve Playwright, une PR. En attente du go de l'utilisateur.
