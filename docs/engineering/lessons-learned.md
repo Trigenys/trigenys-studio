@@ -105,7 +105,7 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 
 ### LESSON-STUDIO-2026-007 — Drizzle retire le qualificatif de table dans une sous-requête corrélée
 
-**Contexte** — Chargement des faits d'une tâche en un seul `select` sur `task`, avec des sous-requêtes corrélées écrites via `sql\`… where task_transition.task_id = ${task.id}\``.
+**Contexte** — Chargement des faits d'une tâche en un seul `select` sur `task`, avec des sous-requêtes corrélées écrites dans un fragment `sql` qui référençait la colonne drizzle `task.id`.
 
 **Failure / near miss** — Les alertes « approbation requise » et « sans activité » ne s'ouvraient jamais, sans erreur : dans un select mono-table drizzle émet `"task_id" = "id"` sans qualificatif, et la sous-requête se comparait à elle-même.
 
