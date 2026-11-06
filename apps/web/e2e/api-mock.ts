@@ -1,5 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import type {
+  Alert,
+  NotificationPreference,
   AiInteraction,
   ContractObjective,
   EditorialReport,
@@ -58,6 +60,88 @@ export const tasks: Task[] = [
   { ...base, id: "44444444-4444-4444-8444-444444444444", productId: "atelier", type: "article", title: "Atelier Maître — rétrospective", state: "reviewing", dueAt: iso(yesterday) },
   { ...base, id: "55555555-5555-4555-8555-555555555555", productId: "insight", type: "post", title: "Thread sur la qualité des données", state: "qualifying", dueAt: null, assigneeId: "u-operator" },
 ];
+
+// Alerts as the reconciler would derive them from the seeded tasks: one
+// per task at most, one per refused delivery (ADR 0011).
+const alertBase = { facts: {}, acknowledgedBy: null, acknowledgedAt: null, resolvedAt: null, resolution: null, emailStatus: "none" as const, version: 1 };
+export const seedAlerts = (): Alert[] => [
+  {
+    ...alertBase,
+    id: "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+    kind: "task_blocked",
+    priority: "p1",
+    state: "open",
+    productId: "atelier",
+    taskId: "44444444-4444-4444-8444-444444444444",
+    taskTitle: "Atelier Maître — rétrospective",
+    taskState: "reviewing",
+    deliveryId: null,
+    title: "Tâche en retard : Atelier Maître — rétrospective",
+    detail: `L'échéance du ${iso(yesterday).slice(0, 10)} est dépassée et la tâche est encore « reviewing ».`,
+    firstSeenAt: iso(yesterday),
+  },
+  {
+    ...alertBase,
+    id: "a2a2a2a2-a2a2-4a2a-8a2a-a2a2a2a2a2a2",
+    kind: "approval_required",
+    priority: "p2",
+    state: "open",
+    productId: "insight",
+    taskId: "22222222-2222-4222-8222-222222222222",
+    taskTitle: "Édito de novembre",
+    taskState: "awaiting_approval",
+    deliveryId: null,
+    title: "Approbation requise : Édito de novembre",
+    detail: "En attente d'approbation depuis le 2026-01-01 (plus de 24 h).",
+    firstSeenAt: "2026-01-02T00:00:00.000Z",
+    emailStatus: "sent",
+  },
+  {
+    ...alertBase,
+    id: "a3a3a3a3-a3a3-4a3a-8a3a-a3a3a3a3a3a3",
+    kind: "publication_failed",
+    priority: "p1",
+    state: "acknowledged",
+    productId: "precis",
+    taskId: "33333333-3333-4333-8333-333333333333",
+    taskTitle: "Précis : étude de cas traduction",
+    taskState: "scheduled",
+    deliveryId: "d3d3d3d3-d3d3-4d3d-8d3d-d3d3d3d3d3d3",
+    title: "Publication refusée : Précis : étude de cas traduction (linkedin)",
+    detail: "Buffer a refusé la publication : jeton expiré.",
+    firstSeenAt: "2026-01-03T00:00:00.000Z",
+    acknowledgedBy: "u-admin",
+    acknowledgedAt: "2026-01-03T01:00:00.000Z",
+    emailStatus: "failed",
+    version: 2,
+  },
+  {
+    ...alertBase,
+    id: "a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4",
+    kind: "content_fix",
+    priority: "p3",
+    state: "resolved",
+    productId: "insight",
+    taskId: "11111111-1111-4111-8111-111111111111",
+    taskTitle: "Lancement Insight sur LinkedIn",
+    taskState: "preparing",
+    deliveryId: null,
+    title: "Contenu à corriger : Lancement Insight sur LinkedIn",
+    detail: "Le contenu a été renvoyé en correction ; il attend une nouvelle version.",
+    firstSeenAt: "2026-01-04T00:00:00.000Z",
+    resolvedAt: "2026-01-05T00:00:00.000Z",
+    resolution: "La condition n'est plus remplie.",
+    version: 2,
+  },
+];
+
+const DEFAULT_EMAIL: Record<Alert["kind"], NotificationPreference["email"]> = {
+  task_blocked: "off",
+  content_fix: "off",
+  approval_required: "immediate",
+  publication_failed: "immediate",
+};
+const ALERT_KINDS = Object.keys(DEFAULT_EMAIL) as Alert["kind"][];
 
 const FROZEN: Task["state"][] = ["scheduled", "published", "measured"];
 // States from which a delivery can be planned: the approval covers the content.
@@ -228,6 +312,8 @@ export async function mockApi(
     interactions: new Map<string, AiInteraction[]>(),
     products: products.map((p) => ({ ...p })),
     objectives: [] as ContractObjective[],
+    alerts: seedAlerts(),
+    preferences: [] as NotificationPreference[],
   };
   const find = (id: string | undefined) => store.tasks.find((x) => x.id === id);
   const detail = (t: Task) => detailOf(t, store.versions.get(t.id));
@@ -240,6 +326,44 @@ export async function mockApi(
       : route.fulfill({ status, contentType: status >= 400 ? "application/problem+json" : "application/json", body: JSON.stringify(body) });
 
   await page.route("**/me", (route) => (signedIn ? json(route, 200, whoami) : json(route, 401, problem(401, "No valid session"))));
+
+  await page.route("**/alerts/reconcile", (route) =>
+    admin
+      ? json(route, 200, { reconcile: { opened: 0, updated: 0, escalated: 0, resolved: 0, queued: 0 }, notify: { claimed: 0, sent: 0, retried: 0, failed: 0, skipped: 0 } })
+      : json(route, 403, problem(403, "Forbidden")),
+  );
+  await page.route(/\/alerts\/[0-9a-f-]{36}\/acknowledge$/, (route) => {
+    const id = route.request().url().match(/\/alerts\/([0-9a-f-]{36})\/acknowledge$/)![1];
+    const a = store.alerts.find((x) => x.id === id);
+    if (!a) return json(route, 404, problem(404, "Alert not found"));
+    if (a.state === "resolved") return json(route, 409, problem(409, "Alert already resolved"));
+    if (a.state === "open") Object.assign(a, { state: "acknowledged", acknowledgedBy: whoami.userId, acknowledgedAt: stamp(), version: a.version + 1 });
+    return json(route, 200, a);
+  });
+  await page.route(/\/alerts(\?.*)?$/, (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    const state = q.get("state") ?? "active";
+    const list = store.alerts.filter(
+      (a) =>
+        (state === "active" ? a.state !== "resolved" : a.state === state) &&
+        (!q.get("priority") || a.priority === q.get("priority")) &&
+        (!q.get("productId") || a.productId === q.get("productId")),
+    );
+    return json(route, 200, list);
+  });
+  await page.route("**/me/notification-preferences", (route) => {
+    if (!signedIn) return json(route, 401, problem(401, "No valid session"));
+    const current = () => ALERT_KINDS.map((kind) => store.preferences.find((p) => p.kind === kind) ?? { kind, email: DEFAULT_EMAIL[kind], source: "default" as const });
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON() as { preferences: { kind: Alert["kind"]; email: NotificationPreference["email"] }[] };
+      for (const p of body.preferences) {
+        const existing = store.preferences.find((x) => x.kind === p.kind);
+        if (existing) existing.email = p.email;
+        else store.preferences.push({ kind: p.kind, email: p.email, source: "user" });
+      }
+    }
+    return json(route, 200, current());
+  });
 
   await page.route(/\/imports(\?.*)?$/, (route) => {
     const q = new URL(route.request().url()).searchParams;

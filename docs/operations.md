@@ -51,6 +51,8 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `BUFFER_BASE_URL`, `BUFFER_ORGANIZATION_ID`, `PUBLISH_LEAD_MINUTES` | `wrangler.jsonc` | config | API Buffer, organisation (facultatif), avance de remise au fournisseur (10 min) ; cron `*/5 * * * *` déclenche l'outbox |
 | `METRICS_TOKEN` | Worker secret (`wrangler secret put METRICS_TOKEN`) | secret | bearer du contrat HTTP JSON des mesures (ADR 0010) ; requis quand `INTEGRATION_METRICS_MODE=live` ; jamais journalisé |
 | `METRICS_BASE_URL`, `METRICS_REFRESH_MINUTES`, `METRICS_BATCH` | `wrangler.jsonc` | config | base du fournisseur de mesures (SEO Monitor ou proxy), intervalle minimal de rafraîchissement, cibles par passage ; en mode `mock` aucun relevé n'est écrit |
+| `ALERT_APPROVAL_HOURS`, `ALERT_STALL_HOURS`, `ALERT_DUE_SOON_HOURS` | `wrangler.jsonc` | config | seuils des alertes (ADR 0011) : attente d'approbation (24 h), inactivité en préparation (72 h), échéance proche qui passe une alerte en P1 (24 h) ; le cron enchaîne outbox → réconciliation → notifications |
+| `WEB_APP_URL` | `wrangler.jsonc` | config | base des liens vers les tâches dans les e-mails d'alerte ; sans elle aucun e-mail d'alerte ne part (audité `skipped`) |
 | Clés des intégrations (CMS, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
 
 Vérification avant chaque release : la recherche de `AUTH_SECRET=` ou `postgresql://` dans
@@ -63,9 +65,9 @@ touchées s'exécutent ; un changement sans impact est un no-op.
 
 | Gate | Couvre | Preuve |
 |---|---|---|
-| `web` | typecheck, build, Playwright desktop + Pixel 7 : parcours, clavier, transitions de validation (approuver, rejeter, renvoyer avec motif), axe WCAG 2.1 A/AA sur connexion, tableau de bord et page tâche | job `web` |
+| `web` | typecheck, build, Playwright desktop + Pixel 7 : parcours, clavier, transitions de validation (approuver, rejeter, renvoyer avec motif), axe WCAG 2.1 A/AA sur connexion, tableau de bord, page tâche et inbox d'alertes | job `web` |
 | `visual-qa` | pages publiques servies par le build : captures desktop/mobile, CTA accessible au clavier, overflow, images externes, motion réduite, axe, budgets Lighthouse (LCP ≤ 2,5 s, CLS ≤ 0,1, TBT ≤ 200 ms) | `reusable-visual-qa.yml`, artefact `appfactory-visual-qa` |
-| `api` | typecheck, tests vitest (machine d'états, approbations liées au hash, Idempotency-Key, RBAC, audit, reporting : régimes opérationnel/vérifié, objectifs, rafraîchissement), contrat OpenAPI à jour, bundle Worker en *dry run* | job `api` |
+| `api` | typecheck, tests vitest (machine d'états, approbations liées au hash, Idempotency-Key, RBAC, audit, reporting : régimes opérationnel/vérifié, objectifs, rafraîchissement ; alertes : règles, réconciliation convergente, outbox e-mail at-most-once, préférences), contrat OpenAPI à jour, bundle Worker en *dry run* | job `api` |
 | `contracts` | client généré conforme à `openapi.json` | job `contracts` |
 | `mobile-android` / `mobile-ios` | tests communs, capture Roborazzi (artefact), APK debug ; framework iOS lié | jobs mobile |
 | `release-config` | cohérence Release Please (config ⊆ manifest) | job `release-config` |

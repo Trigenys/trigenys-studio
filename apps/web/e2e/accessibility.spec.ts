@@ -63,6 +63,15 @@ test("calendar page has no serious accessibility violation", async ({ page }) =>
   expect(await violations(page)).toEqual([]);
 });
 
+test("alerts page has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page, { admin: true });
+  await page.goto("/alerts");
+  await expect(page.getByRole("list", { name: "Alertes" })).toBeVisible();
+  await page.getByText("Mes notifications par e-mail").click();
+  await expect(page.getByRole("list", { name: "Préférences" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
 test("social accounts page has no serious accessibility violation", async ({ page }) => {
   await mockApi(page, { admin: true });
   await page.goto("/social-accounts");

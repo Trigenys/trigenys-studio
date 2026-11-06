@@ -64,6 +64,13 @@
       "when": 1793949159924,
       "tag": "0008_reporting",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793954752965,
+      "tag": "0009_alerts_notifications",
+      "breakpoints": true
     }
   ]
 }

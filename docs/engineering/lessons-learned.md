@@ -89,3 +89,30 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 
 **Leçon généralisée** — Un callback transactionnel ne doit recevoir que la transaction ; un timeout muet dans un harnais mono-connexion est un verrou, pas une lenteur.
 
+### LESSON-STUDIO-2026-006 — Un réconciliateur qui horodate chaque passage n'est pas idempotent
+
+**Contexte** — Réconciliation des alertes (ADR 0011) : la première version mettait dans le détail d'une alerte la durée écoulée (« en attente depuis 26 h ») et dans ses `facts` l'instant du calcul.
+
+**Failure / near miss** — Le test « un second passage sur des données inchangées n'écrit rien » échouait : chaque passage du cron aurait réécrit toutes les alertes, incrémenté leur version et laissé un audit.
+
+**Cause racine** — Une valeur dérivée de « maintenant » dans l'état désiré rend toute comparaison avec l'état courant fausse par construction.
+
+**Résolution** — Les règles ne produisent que des dates fixes (échéance, entrée en attente, dernière activité) ; la durée est calculée à l'affichage. Comparaison des `facts` sous forme canonique (jsonb réordonne les clés).
+
+**Prévention** — Test de convergence obligatoire pour tout réconciliateur : second passage = rapport nul et aucune ligne modifiée. Convention notée en tête de `alerts/rules.ts`.
+
+**Leçon généralisée** — L'état désiré d'un réconciliateur ne doit dépendre que des faits, jamais de l'heure du calcul ; sinon le diff ne converge jamais.
+
+### LESSON-STUDIO-2026-007 — Drizzle retire le qualificatif de table dans une sous-requête corrélée
+
+**Contexte** — Chargement des faits d'une tâche en un seul `select` sur `task`, avec des sous-requêtes corrélées écrites dans un fragment `sql` qui référençait la colonne drizzle `task.id`.
+
+**Failure / near miss** — Les alertes « approbation requise » et « sans activité » ne s'ouvraient jamais, sans erreur : dans un select mono-table drizzle émet `"task_id" = "id"` sans qualificatif, et la sous-requête se comparait à elle-même.
+
+**Cause racine** — Référencer une colonne drizzle dans un fragment `sql` d'une sélection sur une seule table produit un nom nu, résolu dans la portée la plus proche (la sous-requête).
+
+**Résolution** — Noms qualifiés écrits en clair (`"task"."id"`, alias `tt`, `cv`, `cm`) dans les fragments corrélés ; commentaire en place dans `reconcile.ts`.
+
+**Prévention** — Tests qui couvrent chaque règle avec des données qui la déclenchent réellement (ici une transition datée et des commentaires), pas seulement le cas « rien à signaler ».
+
+**Leçon généralisée** — Un fragment SQL corrélé doit qualifier ses colonnes explicitement ; un résultat vide sans erreur est un signal de comparaison dégénérée.

@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { asc, inArray } from "drizzle-orm";
 import { audited } from "../auth/audit.ts";
 import { authorize } from "../auth/middleware.ts";
-import type { Principal } from "../auth/rbac.ts";
+import { readableProducts } from "../auth/rbac.ts";
 import { METRIC_TARGET_KINDS, product } from "../db/schema.ts";
 import type { AppEnv } from "../env.ts";
 import { idempotent } from "../idempotency.ts";
@@ -108,9 +108,6 @@ const ReportQuerySchema = z.object({
 const RefreshRequestSchema = z
   .object({ now: iso.optional().openapi({ description: "Simulated clock (mock metrics only, tests)" }) })
   .openapi("MetricsRefreshRequest");
-
-const readableProducts = (p: Principal): string[] | null =>
-  p.grants.some((g) => g.productId === null) ? null : [...new Set(p.grants.map((g) => g.productId!))];
 
 const reportRoute = createRoute({
   method: "get",

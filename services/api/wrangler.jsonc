@@ -28,6 +28,11 @@
     "METRICS_BASE_URL": "",
     "METRICS_REFRESH_MINUTES": "360",
     "METRICS_BATCH": "25",
+    // Alerts (ADR 0011): thresholds in hours; WEB_APP_URL is the base of the links in alert e-mails
+    // (defaults to the first AUTH_TRUSTED_ORIGINS entry).
+    "ALERT_APPROVAL_HOURS": "24",
+    "ALERT_STALL_HOURS": "72",
+    "ALERT_DUE_SOON_HOURS": "24",
     // "live" needs the ANTHROPIC_API_KEY Worker secret (wrangler secret put ANTHROPIC_API_KEY);
     // LLM_MODEL (optional var) overrides the default model of the adapter.
     "INTEGRATION_LLM_MODE": "mock",

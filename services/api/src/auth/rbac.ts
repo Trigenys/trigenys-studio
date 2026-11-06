@@ -54,6 +54,9 @@ export const policies = {
   "report.read": roleOf(["admin", "operator", "reviewer"], "Reading reports"),
   "objective.manage": roleOf(["admin"], "Managing contract objectives"),
   "metrics.refresh": roleOf(["admin"], "Refreshing verified metrics"),
+  "alert.read": roleOf(["admin", "operator", "reviewer"], "Reading alerts"),
+  "alert.acknowledge": roleOf(["admin", "operator", "reviewer"], "Acknowledging an alert"),
+  "alert.reconcile": roleOf(["admin"], "Running the alert reconciliation"),
   "content.publish": (p, r) => {
     const base = roleOf(["admin", "operator"], "Publishing content")(p, r);
     if (!base.allowed) return base;
@@ -66,3 +69,7 @@ export type Action = keyof typeof policies;
 export function decide(action: Action, principal: Principal, resource: Resource): Decision {
   return policies[action](principal, resource);
 }
+
+// Products the principal may read; null means all of them.
+export const readableProducts = (p: Principal): string[] | null =>
+  p.grants.some((g) => g.productId === null) ? null : [...new Set(p.grants.map((g) => g.productId!))];

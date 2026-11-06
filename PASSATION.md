@@ -175,3 +175,22 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuves : API tsc 0, vitest 129/129, openapi:check et contracts check à jour, wrangler dry-run OK ; web tsc 0, vite build OK, Playwright 100/100 (desktop + Pixel 7).
 - Docs : ADR 0010, `docs/operations.md` (METRICS_*), lessons-learned 004 (mock ≠ mesure) et 005 (tx PGlite). Reste : commit, push, PR « Closes #10 », CI, merge sur accord, puis #11.
 
+
+## 2026-11-06 09:36 — PR #35 mergée, incrément 14 (#11 notifications) démarré
+
+- PR #35 (#10 reporting) mergée en squash (`dcd9482`), branche distante supprimée, `main` à jour. Branche `feat/notifications` créée.
+- Incrément 14 = #11 : plan architecte demandé (alertes dédupliquées dérivées des faits : tâches en retard / à corriger, approbation requise, publication échouée, import en erreur ; préférences par utilisateur ; envois via port Mailer avec retries audités ; page `/alerts` + badge tableau de bord). Puis API → contrats → web/e2e → ADR 0011 → PR « Closes #11 ».
+- Verrous inchangés : Neon/Hyperdrive (appfactory#185), compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, alignement SHA impact/release, rendu PNG, contrat `http-json-metrics` à valider contre le SEO Monitor.
+
+## 2026-11-06 09:42 — Plan #11 reçu (scratchpad plan-inc14.md)
+
+- Décision : alertes = état dérivé, un seul écrivain `alerts/reconcile.ts` (inspecter → désiré → diff ; second passage = 0 écriture), kinds `task_blocked|content_fix|approval_required|publication_failed`, priorités p1/p2/p3 par `alerts/rules.ts` (seuils `ALERT_APPROVAL_HOURS` 24, `ALERT_STALL_HOURS` 72, `ALERT_DUE_SOON_HOURS` 24), une alerte tâche par tâche (précédence content_fix > approval_required > overdue > stalled), `publication_failed` par livraison failed, dédup par index partiel sur `dedup_key` (state <> resolved). Pas de résolution manuelle ; acquittement ; escalade rouvre et renvoie.
+- E-mails : outbox at-most-once `notification_dispatch` (`alerts/notify.ts`, phases comme `publishing/dispatch.ts`, bail 5 min, backoff, 3 tentatives, audit `notification.send` sans adresse), port `Mailer` template `alert`, `WEB_APP_URL`. Préférences `notification_preference` (user, kind, email off|immediate ; défauts dans le code). Bootstrap silencieux (pas d e-mail au premier passage).
+- Routes : `GET /alerts`, `POST /alerts/{id}/acknowledge`, `POST /alerts/reconcile` (admin), `GET/PATCH /me/notification-preferences` ; RBAC `alert.read|acknowledge|reconcile` ; cron : dispatch → alertes ; réconciliation ciblée best-effort après transitions/approbations/retry/cancel. Web : `/alerts` (filtres, acquitter, préférences, admin « Vérifier maintenant »), badge « Alertes » tableau de bord. Imports hors périmètre (pas de fait d erreur). ADR 0011, LESSON-006.
+
+## 2026-11-06 10:10 — Incrément 14 (#11 alertes et notifications) prêt à livrer
+
+- Branche `feat/notifications`. API : migration `0009_alerts_notifications.sql` (alert, notification_preference, notification_dispatch, index partiel dedup), `alerts/rules.ts` (4 kinds, précédence, priorités, seuils `ALERT_*`), `alerts/reconcile.ts` (seul écrivain, diff convergent, bootstrap silencieux, hooks ciblés dans tasks/deliveries), `alerts/notify.ts` (outbox at-most-once, bail, backoff, audit sans adresse), routes `/alerts`, `/alerts/{id}/acknowledge`, `/alerts/reconcile` (admin), `/me/notification-preferences` (GET/PATCH, `requireSession`), RBAC `alert.read|acknowledge|reconcile`, cron outbox → réconciliation → notifications, `WEB_APP_URL`.
+- Web : `src/alerts.ts` (libellés), hooks `alertKeys`/`useAlerts`/`useAcknowledgeAlert`/`useReconcileAlerts`/préférences, page `/alerts` (filtres URL état/priorité/produit, lien tâche + `#publication`, Acquitter, « E-mail non remis », préférences repliables, admin « Vérifier maintenant »), lien « Alertes (n) » sur le tableau de bord (+1 Tab dans le test clavier), mock e2e (`seedAlerts`, routes alerts/preferences), `alerts.spec.ts` 7 scénarios + axe.
+- Preuves : API tsc 0, vitest 146/146, openapi/contracts à jour, wrangler dry-run OK ; web tsc 0, vite build OK, Playwright 116/116 (desktop + Pixel 7).
+- Docs : ADR 0011, lessons 006 (rien dérivé de « maintenant » dans un réconciliateur) et 007 (drizzle retire le qualificatif en sous-requête corrélée), `docs/operations.md` (ALERT_*, WEB_APP_URL, gates). Reste : commit, push, PR « Closes #11 », CI, merge sur accord. Issues restantes ensuite : #15 (verrou propriétaire), #1/#2 (cadrage).

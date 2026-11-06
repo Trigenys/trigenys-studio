@@ -51,6 +51,13 @@ export type Bindings = {
   METRICS_TOKEN?: string;
   METRICS_REFRESH_MINUTES?: string;
   METRICS_BATCH?: string;
+  // Alerts (ADR 0011): hours before a pending approval, a stalled task or a
+  // close due date raise or escalate an alert; WEB_APP_URL is the base of the
+  // links in notification e-mails (defaults to the first trusted origin).
+  ALERT_APPROVAL_HOURS?: string;
+  ALERT_STALL_HOURS?: string;
+  ALERT_DUE_SOON_HOURS?: string;
+  WEB_APP_URL?: string;
 };
 
 export type Variables = {

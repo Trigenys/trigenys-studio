@@ -7,6 +7,7 @@ import { BrandKitsPage } from "./pages/BrandKits";
 import { CalendarPage } from "./pages/Calendar";
 import { DashboardPage } from "./pages/Dashboard";
 import { ImportsPage } from "./pages/Imports";
+import { AlertsPage } from "./pages/Alerts";
 import { LoginPage } from "./pages/Login";
 import { NewTaskPage } from "./pages/NewTask";
 import { ReportingPage } from "./pages/Reporting";
@@ -38,6 +39,7 @@ function Authenticated() {
         <Route path="social-accounts" element={<SocialAccountsPage me={me.data} />} />
         <Route path="tasks/new" element={<NewTaskPage me={me.data} />} />
         <Route path="tasks/:id" element={<TaskPage me={me.data} />} />
+        <Route path="alerts" element={<AlertsPage me={me.data} />} />
         <Route path=":view" element={<DashboardPage me={me.data} />} />
       </Routes>
     </Shell>

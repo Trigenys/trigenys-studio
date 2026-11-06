@@ -64,6 +64,10 @@ export type VerifiedMetrics = components["schemas"]["VerifiedMetrics"];
 export type MetricsRefreshReport = components["schemas"]["MetricsRefreshReport"];
 export type MetricsRefreshRequest = components["schemas"]["MetricsRefreshRequest"];
 export type UpdateProduct = components["schemas"]["UpdateProduct"];
+export type Alert = components["schemas"]["Alert"];
+export type AlertReconcileReport = components["schemas"]["AlertReconcileReport"];
+export type NotificationPreference = components["schemas"]["NotificationPreference"];
+export type UpdateNotificationPreferences = components["schemas"]["UpdateNotificationPreferences"];
 
 // Typed HTTP client shared by the web app (cookie session) and tooling.
 // Mobile clients are generated from openapi.json with openapi-generator (Kotlin).
