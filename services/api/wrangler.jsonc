@@ -22,7 +22,12 @@
     "INTEGRATION_CMS_MODE": "mock",
     // live: EDITORIAL_OS_BASE_URL var + EDITORIAL_OS_TOKEN secret.
     "INTEGRATION_RADAR_MODE": "mock",
+    // live: METRICS_BASE_URL var + METRICS_TOKEN secret (wrangler secret put METRICS_TOKEN), generic
+    // HTTP JSON contract (ADR 0010). METRICS_REFRESH_MINUTES / METRICS_BATCH tune the cron refresh.
     "INTEGRATION_METRICS_MODE": "mock",
+    "METRICS_BASE_URL": "",
+    "METRICS_REFRESH_MINUTES": "360",
+    "METRICS_BATCH": "25",
     // "live" needs the ANTHROPIC_API_KEY Worker secret (wrangler secret put ANTHROPIC_API_KEY);
     // LLM_MODEL (optional var) overrides the default model of the adapter.
     "INTEGRATION_LLM_MODE": "mock",

@@ -16,6 +16,8 @@ import { importRoutes } from "./routes/imports.ts";
 import { visualRoutes } from "./routes/visuals.ts";
 import { socialAccountRoutes } from "./routes/social-accounts.ts";
 import { deliveryRoutes } from "./routes/deliveries.ts";
+import { objectiveRoutes } from "./routes/objectives.ts";
+import { reportRoutes } from "./routes/reports.ts";
 import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
 import { VERSION } from "./version.ts";
@@ -127,6 +129,8 @@ export function createApp(deps: AppDeps = {}) {
   app.route("/", visualRoutes);
   app.route("/", socialAccountRoutes);
   app.route("/", deliveryRoutes);
+  app.route("/", reportRoutes);
+  app.route("/", objectiveRoutes);
 
   return app;
 }

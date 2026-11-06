@@ -159,3 +159,19 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuves : API tsc 0, vitest 113/113, wrangler dry-run OK, openapi:check et contracts check à jour ; web tsc 0, vite build OK, Playwright 86/86 (desktop + Pixel 7) après ajout d'un Tab pour « Calendrier » dans le test clavier.
 - ADR 0009, `docs/operations.md` (BUFFER_API_KEY secret, vars Buffer/lead/cron). Reste : commit, push, PR « Closes #9 », CI, merge sur accord.
 - À confirmer en passage `live` : contrat bêta Buffer (`shareNow`, deletePost, permalien) ; pas d'idempotence côté Buffer (doute → `failed` « vérification manuelle »).
+
+## 2026-11-06 07:59 — PR #34 mergée, incrément 13 (#10 reporting) démarré
+
+- PR #34 (#9 publication) mergée en squash (`39034c4`), branche distante supprimée, `main` à jour en local.
+- Issues ouvertes restantes : #10 (reporting éditorial et SEO Monitor), #11 (notifications et exceptions), #15 (Project GitHub doublon, verrou propriétaire), #1/#2 (cadrage, à clôturer par le propriétaire).
+- Incrément 13 = #10 : plan architecte demandé (scratchpad `plan-inc13.md`), puis API → contrats → web/e2e → ADR 0010 → PR « Closes #10 ». Enchaîner ensuite sur #11.
+- Verrous inchangés : Neon/Hyperdrive (appfactory#185), compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, alignement SHA impact/release, rendu PNG.
+
+## 2026-11-06 08:53 — Incrément 13 (#10 reporting) prêt à livrer
+
+- Branche `feat/reporting`. API : migration `0008_reporting.sql` (contract_objective, metric_snapshot, index sent_at / transitions), `reporting/` (period, report, verified, refresh), port `MetricsProvider.verified`, adaptateur `http-json-metrics` (contrat `GET /v1/metrics?kind&ref`, bearer `METRICS_TOKEN`), routes `/reports/editorial`, `/reports/metrics/refresh` (409 `metrics-not-connected` en mock), `/products/{id}/objectives`, `/objectives/{id}`, `PATCH /products/{id}` (seoMonitorUrl), RBAC `report.read` / `objective.manage` / `metrics.refresh`.
+- Web : hooks `reportKeys`, page `/reports` (mois UTC, filtre produit, comptages, objectifs admin, campagnes, articles, mesures vérifiées avec provenance, lien SEO Monitor, rafraîchissement admin), lien « Rapports » sur le tableau de bord. Mock e2e : option `metricsConnected`, routes reporting/objectifs/produits.
+- Correctif mobile : `.stack > * { min-width: 0 }` + `.table-wrap` (overflow-x, focusable, région nommée) + `.kit-card { overflow-wrap: anywhere }` — les tableaux élargissaient la page à 668 px sur Pixel 7 et le tap sur « Rafraîchir » tombait sur une carte voisine.
+- Preuves : API tsc 0, vitest 129/129, openapi:check et contracts check à jour, wrangler dry-run OK ; web tsc 0, vite build OK, Playwright 100/100 (desktop + Pixel 7).
+- Docs : ADR 0010, `docs/operations.md` (METRICS_*), lessons-learned 004 (mock ≠ mesure) et 005 (tx PGlite). Reste : commit, push, PR « Closes #10 », CI, merge sur accord, puis #11.
+

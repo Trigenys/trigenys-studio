@@ -271,6 +271,13 @@
           "name": {
             "type": "string"
           },
+          "seoMonitorUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "External SEO Monitor page for this product (ADR 0010)"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -279,6 +286,7 @@
         "required": [
           "id",
           "name",
+          "seoMonitorUrl",
           "createdAt"
         ]
       },
@@ -299,6 +307,22 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "UpdateProduct": {
+        "type": "object",
+        "properties": {
+          "seoMonitorUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "seoMonitorUrl"
         ]
       },
       "Task": {
@@ -2434,6 +2458,500 @@
           "state",
           "dueAt"
         ]
+      },
+      "EditorialReport": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operational": {
+            "type": "object",
+            "properties": {
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskCounts"
+                }
+              },
+              "publishedArticles": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PublishedArticle"
+                }
+              },
+              "campaigns": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChannelCampaign"
+                }
+              }
+            },
+            "required": [
+              "tasks",
+              "publishedArticles",
+              "campaigns"
+            ]
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectiveProgress"
+            }
+          },
+          "verified": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerifiedMetrics"
+            }
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportProduct"
+            }
+          }
+        },
+        "required": [
+          "month",
+          "from",
+          "to",
+          "generatedAt",
+          "operational",
+          "objectives",
+          "verified",
+          "products"
+        ]
+      },
+      "TaskCounts": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "due": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "integer"
+          },
+          "late": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "productId",
+          "type",
+          "due",
+          "done",
+          "late"
+        ]
+      },
+      "PublishedArticle": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "taskId",
+          "productId",
+          "title",
+          "publishedAt",
+          "url"
+        ]
+      },
+      "ChannelCampaign": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "scheduled": {
+            "type": "integer"
+          },
+          "handedOff": {
+            "type": "integer"
+          },
+          "sent": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "cancelled": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "productId",
+          "channel",
+          "scheduled",
+          "handedOff",
+          "sent",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "ObjectiveProgress": {
+        "type": "object",
+        "properties": {
+          "objective": {
+            "$ref": "#/components/schemas/ContractObjective"
+          },
+          "actual": {
+            "type": "integer"
+          },
+          "ratio": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "objective",
+          "actual",
+          "ratio"
+        ]
+      },
+      "ContractObjective": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "tasks_completed",
+              "articles_published",
+              "deliveries_sent"
+            ]
+          },
+          "taskType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "period": {
+            "type": "string"
+          },
+          "target": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "metric",
+          "taskType",
+          "channel",
+          "period",
+          "target",
+          "active",
+          "version",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "VerifiedMetrics": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_connected"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "productId",
+              "status",
+              "reason"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "connected"
+                ]
+              },
+              "provider": {
+                "type": "string"
+              },
+              "snapshots": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MetricSnapshot"
+                }
+              },
+              "totals": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "productId",
+              "status",
+              "provider",
+              "snapshots",
+              "totals"
+            ]
+          }
+        ]
+      },
+      "MetricSnapshot": {
+        "type": "object",
+        "properties": {
+          "targetKind": {
+            "type": "string",
+            "enum": [
+              "deliverable",
+              "url"
+            ]
+          },
+          "targetRef": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fetchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetRef",
+          "provider",
+          "measuredAt",
+          "fetchedAt",
+          "metrics"
+        ]
+      },
+      "ReportProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seoMonitorUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "seoMonitorUrl"
+        ]
+      },
+      "MetricsRefreshReport": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "considered": {
+            "type": "integer"
+          },
+          "written": {
+            "type": "integer"
+          },
+          "unchanged": {
+            "type": "integer"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ref",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "provider",
+          "considered",
+          "written",
+          "unchanged",
+          "errors"
+        ]
+      },
+      "MetricsRefreshRequest": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Simulated clock (mock metrics only, tests)"
+          }
+        }
+      },
+      "CreateContractObjective": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string",
+            "enum": [
+              "tasks_completed",
+              "articles_published",
+              "deliveries_sent"
+            ]
+          },
+          "taskType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "linkedin",
+              "x",
+              "instagram",
+              "facebook",
+              "threads"
+            ]
+          },
+          "target": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "metric",
+          "target"
+        ]
+      },
+      "UpdateContractObjective": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "target": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 100000
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version"
+        ]
       }
     },
     "parameters": {}
@@ -2838,6 +3356,95 @@
           },
           "409": {
             "description": "Id already used with another name",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "patch": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Update a product's settings (admin, audited)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProduct"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body (https URL expected)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7293,6 +7900,486 @@
           },
           "422": {
             "description": "Window must be positive and at most 92 days",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/editorial": {
+      "get": {
+        "tags": [
+          "reporting"
+        ],
+        "summary": "Monthly editorial report: operational counts, contract objectives, verified measures",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "example": "2026-11"
+            },
+            "required": false,
+            "name": "month",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "productId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid month",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No role on the product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/metrics/refresh": {
+      "post": {
+        "tags": [
+          "reporting"
+        ],
+        "summary": "Fetch fresh snapshots from the verified metrics provider (admin, audited, idempotent)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Replays an identical request"
+            },
+            "required": false,
+            "description": "Replays an identical request",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricsRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refresh report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsRefreshReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Simulated clock refused outside the mock provider",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No verified metrics provider is connected",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key reused for a different request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}/objectives": {
+      "get": {
+        "tags": [
+          "reporting"
+        ],
+        "summary": "List the contract objectives of a product (active first)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Objectives",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContractObjective"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No role on the product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "reporting"
+        ],
+        "summary": "Create a contract objective (admin, audited, idempotent)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Replays an identical request"
+            },
+            "required": false,
+            "description": "Replays an identical request",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContractObjective"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractObjective"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or scope",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An active objective already covers this scope",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key reused for a different request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objectives/{id}": {
+      "patch": {
+        "tags": [
+          "reporting"
+        ],
+        "summary": "Change the target or deactivate an objective (admin, audited, optimistic version)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContractObjective"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractObjective"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown objective",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -392,6 +392,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a product's settings (admin, audited) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProduct"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Product"];
+                    };
+                };
+                /** @description Invalid body (https URL expected) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown product */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/tasks": {
         parameters: {
             query?: never;
@@ -4017,6 +4095,404 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/editorial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monthly editorial report: operational counts, contract objectives, verified measures */
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    productId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EditorialReport"];
+                    };
+                };
+                /** @description Invalid month */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No role on the product */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown product */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/metrics/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch fresh snapshots from the verified metrics provider (admin, audited, idempotent) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Replays an identical request */
+                    "idempotency-key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MetricsRefreshRequest"];
+                };
+            };
+            responses: {
+                /** @description Refresh report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MetricsRefreshReport"];
+                    };
+                };
+                /** @description Simulated clock refused outside the mock provider */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No verified metrics provider is connected */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Idempotency-Key reused for a different request */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{id}/objectives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the contract objectives of a product (active first) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Objectives */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContractObjective"][];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No role on the product */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown product */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a contract objective (admin, audited, idempotent) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Replays an identical request */
+                    "idempotency-key"?: string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateContractObjective"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContractObjective"];
+                    };
+                };
+                /** @description Invalid body or scope */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown product */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description An active objective already covers this scope */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Idempotency-Key reused for a different request */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/objectives/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the target or deactivate an objective (admin, audited, optimistic version) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateContractObjective"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContractObjective"];
+                    };
+                };
+                /** @description Invalid body */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown objective */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Version conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4080,6 +4556,8 @@ export interface components {
         Product: {
             id: string;
             name: string;
+            /** @description External SEO Monitor page for this product (ADR 0010) */
+            seoMonitorUrl: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -4087,6 +4565,10 @@ export interface components {
             /** @example insight */
             id: string;
             name: string;
+        };
+        UpdateProduct: {
+            /** Format: uri */
+            seoMonitorUrl: string | null;
         };
         Task: {
             /** Format: uuid */
@@ -4632,6 +5114,134 @@ export interface components {
             state: "qualifying" | "preparing" | "reviewing" | "visuals" | "awaiting_approval" | "approved" | "scheduled" | "published" | "measured" | "needs_fix" | "rejected" | "failed";
             /** Format: date-time */
             dueAt: string;
+        };
+        EditorialReport: {
+            month: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: date-time */
+            generatedAt: string;
+            operational: {
+                tasks: components["schemas"]["TaskCounts"][];
+                publishedArticles: components["schemas"]["PublishedArticle"][];
+                campaigns: components["schemas"]["ChannelCampaign"][];
+            };
+            objectives: components["schemas"]["ObjectiveProgress"][];
+            verified: components["schemas"]["VerifiedMetrics"][];
+            products: components["schemas"]["ReportProduct"][];
+        };
+        TaskCounts: {
+            productId: string;
+            type: string;
+            due: number;
+            done: number;
+            late: number;
+        };
+        PublishedArticle: {
+            /** Format: uuid */
+            taskId: string;
+            productId: string;
+            title: string;
+            /** Format: date-time */
+            publishedAt: string;
+            url: string | null;
+        };
+        ChannelCampaign: {
+            productId: string;
+            channel: string;
+            scheduled: number;
+            handedOff: number;
+            sent: number;
+            failed: number;
+            cancelled: number;
+        };
+        ObjectiveProgress: {
+            objective: components["schemas"]["ContractObjective"];
+            actual: number;
+            ratio: number;
+        };
+        ContractObjective: {
+            /** Format: uuid */
+            id: string;
+            productId: string;
+            /** @enum {string} */
+            metric: "tasks_completed" | "articles_published" | "deliveries_sent";
+            taskType: string | null;
+            channel: string | null;
+            period: string;
+            target: number;
+            active: boolean;
+            version: number;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        VerifiedMetrics: {
+            productId: string;
+            /** @enum {string} */
+            status: "not_connected";
+            reason: string;
+        } | {
+            productId: string;
+            /** @enum {string} */
+            status: "connected";
+            provider: string;
+            snapshots: components["schemas"]["MetricSnapshot"][];
+            totals: {
+                [key: string]: number;
+            };
+        };
+        MetricSnapshot: {
+            /** @enum {string} */
+            targetKind: "deliverable" | "url";
+            targetRef: string;
+            provider: string;
+            /** Format: date-time */
+            measuredAt: string;
+            /** Format: date-time */
+            fetchedAt: string;
+            metrics: {
+                [key: string]: number;
+            };
+        };
+        ReportProduct: {
+            id: string;
+            name: string;
+            seoMonitorUrl: string | null;
+        };
+        MetricsRefreshReport: {
+            provider: string;
+            considered: number;
+            written: number;
+            unchanged: number;
+            errors: {
+                ref: string;
+                message: string;
+            }[];
+        };
+        MetricsRefreshRequest: {
+            /**
+             * Format: date-time
+             * @description Simulated clock (mock metrics only, tests)
+             */
+            now?: string;
+        };
+        CreateContractObjective: {
+            /** @enum {string} */
+            metric: "tasks_completed" | "articles_published" | "deliveries_sent";
+            taskType?: string;
+            /** @enum {string} */
+            channel?: "linkedin" | "x" | "instagram" | "facebook" | "threads";
+            target: number;
+        };
+        UpdateContractObjective: {
+            version: number;
+            target?: number;
+            active?: boolean;
         };
     };
     responses: never;

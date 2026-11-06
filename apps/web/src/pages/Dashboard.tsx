@@ -51,6 +51,9 @@ export function DashboardPage({ me }: { me: Me }) {
           <Link to="/calendar" className="btn">
             Calendrier
           </Link>
+          <Link to="/reports" className="btn">
+            Rapports
+          </Link>
           {me.grants.some((g) => g.role === "admin") ? (
             <>
               <Link to="/brand-kits" className="btn">
