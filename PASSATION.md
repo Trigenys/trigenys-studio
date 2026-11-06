@@ -225,3 +225,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Pièges rencontrés : wrangler 4 attend `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` **dans l'environnement du processus** (ignoré dans `.dev.vars`) ; `localhost` et un conteneur créé sans port publié actif font pendre la connexion → `127.0.0.1` + `?sslmode=disable` ; Vite tombé sur 5175 → origine ajoutée à `AUTH_TRUSTED_ORIGINS` dans `.dev.vars`.
 - Branche `fix/local-dev-hyperdrive` : README et `.dev.vars.example` corrigés (variable, Docker, psql de secours). Config de lancement locale dans `.claude/launch.json` (non versionné).
 - Verrous propriétaire inchangés : Neon/Hyperdrive de staging, compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, suppression du Project #25 (#15).
+
+## 2026-11-06 13:31 — PR #39 fusionnée, app locale opérationnelle
+
+- PR #39 fusionnée (squash, a2f28a9) : doc de lancement local corrigée (`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` en variable d'environnement, Docker Postgres, repli psql) et test alertes ancré sur l'horloge réelle (LESSON-STUDIO-2026-008). Aucune PR ouverte, main à jour, CI verte.
+- App locale : Docker `trigenys-studio-pg` (127.0.0.1:5434), Worker 8787, web 5175 (`.claude/launch.json`, non versionné) ; compte admin = adresse de l'utilisateur ; les variables locales sont dans `services/api/.dev.vars` (non commis).
+- Suite API complète instable en parallèle localement (« PGlite is closed ») quand les serveurs dev tournent ; passe en série (`--no-file-parallelism`, 147/147).
+- Prochaine étape : à la demande de l'utilisateur (tester l'app dans le navigateur, ou déploiement staging qui dépend des verrous propriétaire Neon/Cloudflare).
