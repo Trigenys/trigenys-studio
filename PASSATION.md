@@ -203,3 +203,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Verrous propriétaire inchangés : Neon/Hyperdrive (appfactory#185), compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, suppression Project #25.
 - Suites hors backlog : renderer PNG (ADR 0008), aligner impact/release sur le SHA du registry, confirmer le contrat Buffer beta et `http-json-metrics` au premier run réel.
 - Prochaine étape : aucune issue produit en attente ; premier déploiement staging dès levée des verrous (`docs/operations.md` §6).
+
+## 2026-11-06 10:27 — Test local sans déploiement
+
+- Branche `fix/local-dev`. Le proxy Vite ne couvrait que 5 préfixes : les routes alerts, calendar, reports, brand-kits, deliveries, imports, objectives, social-accounts, visuals, visual-formats recevaient `index.html` en dev. Désormais dérivé de `packages/contracts/openapi.json` (plus de liste à maintenir).
+- `services/api/scripts/bootstrap-local.sql` : premier admin + 3 produits, idempotent, couvert par `test/bootstrap-local.test.ts` (PGlite, rejoué deux fois).
+- README « Tester l'application en local » : Neon dev branch → `.dev.vars` → `db:migrate` → `wrangler dev` + Vite → lien magique dans la console (`[mock-mailer]`) → bootstrap SQL.
+- Reste : l'utilisateur crée la branche Neon et renseigne `.dev.vars` lui-même (jamais commis).
