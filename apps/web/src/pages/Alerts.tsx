@@ -81,7 +81,9 @@ export function AlertsPage({ me }: { me: Me }) {
       ) : null}
       {reconcile.isError ? <ErrorState error={reconcile.error} /> : null}
 
-      <div className="actions" role="group" aria-label="État">
+      <div className="filters">
+      <div className="filter-group" role="group" aria-label="État">
+        <span className="filter-label" aria-hidden="true">État</span>
         {STATES.map((s) => (
           <button
             key={s.value}
@@ -94,7 +96,8 @@ export function AlertsPage({ me }: { me: Me }) {
           </button>
         ))}
       </div>
-      <div className="actions" role="group" aria-label="Priorité">
+      <div className="filter-group" role="group" aria-label="Priorité">
+        <span className="filter-label" aria-hidden="true">Priorité</span>
         <button type="button" className="chip-btn" aria-pressed={!priority} onClick={() => setParam("priority", undefined)}>
           Toutes
         </button>
@@ -105,7 +108,8 @@ export function AlertsPage({ me }: { me: Me }) {
         ))}
       </div>
       {products.data && products.data.length > 1 ? (
-        <div className="actions" role="group" aria-label="Produit">
+        <div className="filter-group" role="group" aria-label="Produit">
+          <span className="filter-label" aria-hidden="true">Produit</span>
           <button type="button" className="chip-btn" aria-pressed={!productId} onClick={() => setParam("product", undefined)}>
             Tous les produits
           </button>
@@ -116,6 +120,7 @@ export function AlertsPage({ me }: { me: Me }) {
           ))}
         </div>
       ) : null}
+      </div>
 
       {alerts.isPending ? <Loading /> : null}
       {alerts.isError ? <ErrorState error={alerts.error} /> : null}

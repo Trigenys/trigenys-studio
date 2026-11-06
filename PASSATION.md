@@ -237,3 +237,29 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - L'utilisateur juge l'UI web laide. Constat : aucun skill design (frontend-design, design-taste-frontend, high-end-visual-design, ux-ui-cx-excellence) n'a été invoqué lors des incréments web ; `apps/web/src/styles.css` (274 lignes) est un thème sombre générique (Inter, accent indigo, dégradés radiaux) sur 10 pages.
 - Prochaine étape proposée : incrément « refonte visuelle » — audit UX/UI d'abord, direction de design assumée, refonte du système de styles et des pages, preuve Playwright, une PR. En attente du go de l'utilisateur.
+
+## 2026-11-06 14:13 — Refonte visuelle web en cours (branche feat/web-visual-redesign)
+
+- Direction retenue (skills design-taste-frontend + ux-ui-cx-excellence) : UI produit calme type Linear, police Geist (`@fontsource-variable/geist`), base neutre, un seul accent bleu, thème clair/sombre via `prefers-color-scheme`, rayons 6/8/12, navigation globale en barre latérale (≥ 900 px) et en-tête collant avec nav défilante (≤ 900 px).
+- Fichiers : `apps/web/src/styles.css` réécrit ; `Shell.tsx` porte la navigation (compteur d'alertes, section Réglages admin) ; `Dashboard.tsx` n'a plus de liens de navigation ; tirets cadratins retirés des textes ; `index.html`, `favicon.svg`, deux specs e2e ajustées (ordre de tabulation, texte du lien Alertes).
+- Piège : sur mobile, `.shell` (grille, min-height 100vh) répartissait l'espace libre entre l'en-tête et le contenu → en-tête de 197 px ; corrigé avec `grid-template-rows: auto 1fr` dans le bloc ≤ 900 px.
+- État : build et e2e verts avant le correctif mobile, relance en cours ; reste à committer (sans `.claude/`), ouvrir la PR avec revue RAIDER et captures, attendre la CI, puis demander le go de fusion.
+
+## 2026-11-06 14:25 — PR #40 ouverte : refonte visuelle du cockpit
+
+- PR #40 (`feat/web-visual-redesign`, commit 1cadbcc) : refonte visuelle complète, preuves dans la PR (build, 98 e2e Playwright, captures). CI verte (contracts, visual-qa, impact, sync-project).
+- En attente du go utilisateur pour fusion (`gh pr merge 40 --repo Trigenys/trigenys-studio --squash --delete-branch`).
+- Serveurs locaux toujours lancés : Worker 8787, web 5175, Docker `trigenys-studio-pg`.
+
+## 2026-11-06 14:50 — PR #40 : correctif accessibilité après CI rouge
+
+- Le job `web` de la CI échouait (18 tests axe) : contraste des pastilles `warn`/`success` en clair et `aria-label` du lien Alertes différent du texte visible. Le vert local précédent venait d'un serveur Vite réutilisé sur le port 5190 (LESSON-STUDIO-2026-009).
+- Correctifs : tokens `--warn` #854d0e / `--success` #166534 (clair), suffixe `visually-hidden` « à traiter » à la place de l'`aria-label`, helper axe qui affiche fg/bg/ratio. Suite complète : 116 tests verts, build vert.
+- Prochaine étape : CI verte sur le nouveau commit, puis go utilisateur pour fusion en squash.
+
+## 2026-11-06 16:17 — PR #40 : barre de filtres des alertes
+
+- Retour utilisateur : les filtres État / Priorité / Produit de /alerts étaient empilés sans libellé.
+- Correctif 64e19ec : wrapper `.filters` (flex, bordures haut/bas), `.filter-group` avec libellé visible `.filter-label` (aria-label conservé).
+- Preuves : 116 e2e passés (port 5190 libre), `npm run build` vert, rendu vérifié dans le navigateur.
+- En attente : CI sur 64e19ec puis accord utilisateur pour le squash merge de la PR #40.

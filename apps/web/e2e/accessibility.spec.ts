@@ -8,7 +8,12 @@ async function violations(page: Page) {
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => `${n.target.join(" ")} ${detail(n)}`).join(", ")}`);
+}
+
+function detail(node: { any: { data?: unknown }[] }) {
+  const data = node.any[0]?.data as { fgColor?: string; bgColor?: string; contrastRatio?: number } | undefined;
+  return data?.contrastRatio ? `[${data.fgColor} on ${data.bgColor} = ${data.contrastRatio}]` : "";
 }
 
 test("login page has no serious accessibility violation", async ({ page }) => {

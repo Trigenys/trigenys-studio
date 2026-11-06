@@ -75,7 +75,7 @@ function VisualCard({ visual, writer, discard, busy }: { visual: VisualAsset; wr
     <li className="visual-card">
       <figure>
         {blob.data ? (
-          <img src={blob.data} alt={`${visual.title}${visual.subtitle ? ` — ${visual.subtitle}` : ""}`} width={visual.width} height={visual.height} />
+          <img src={blob.data} alt={`${visual.title}${visual.subtitle ? `, ${visual.subtitle}` : ""}`} width={visual.width} height={visual.height} />
         ) : (
           <div className="visual-placeholder" style={{ aspectRatio: `${visual.width} / ${visual.height}` }} aria-hidden="true" />
         )}

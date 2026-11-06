@@ -118,7 +118,7 @@ function Month({ days }: { days: Day[] }) {
                     · {e.productId} · {e.accountHandle} ({e.channel})
                   </span>{" "}
                   <span className={`chip delivery-${e.status}`}>{DELIVERY_LABELS[e.status]}</span>
-                  {e.lastError ? <span className="state-error-text"> — {e.lastError}</span> : null}
+                  {e.lastError ? <span className="state-error-text"> : {e.lastError}</span> : null}
                   {e.permalink ? (
                     <>
                       {" "}
