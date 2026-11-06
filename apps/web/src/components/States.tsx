@@ -22,8 +22,8 @@ export function ErrorState({ error, retry, retryLabel = "Réessayer" }: { error:
     <div className="state state-error" role="alert">
       <p>
         <strong>{problem?.title ?? "Une erreur est survenue"}</strong>
-        {problem?.detail ? <> — {problem.detail}</> : null}
-        {!problem && error.message ? <> — {error.message}</> : null}
+        {problem?.detail ? <span className="state-detail">{problem.detail}</span> : null}
+        {!problem && error.message ? <span className="state-detail">{error.message}</span> : null}
       </p>
       {retry ? (
         <button type="button" className="btn" onClick={retry}>

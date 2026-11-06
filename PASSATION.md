@@ -237,3 +237,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - L'utilisateur juge l'UI web laide. Constat : aucun skill design (frontend-design, design-taste-frontend, high-end-visual-design, ux-ui-cx-excellence) n'a été invoqué lors des incréments web ; `apps/web/src/styles.css` (274 lignes) est un thème sombre générique (Inter, accent indigo, dégradés radiaux) sur 10 pages.
 - Prochaine étape proposée : incrément « refonte visuelle » — audit UX/UI d'abord, direction de design assumée, refonte du système de styles et des pages, preuve Playwright, une PR. En attente du go de l'utilisateur.
+
+## 2026-11-06 14:13 — Refonte visuelle web en cours (branche feat/web-visual-redesign)
+
+- Direction retenue (skills design-taste-frontend + ux-ui-cx-excellence) : UI produit calme type Linear, police Geist (`@fontsource-variable/geist`), base neutre, un seul accent bleu, thème clair/sombre via `prefers-color-scheme`, rayons 6/8/12, navigation globale en barre latérale (≥ 900 px) et en-tête collant avec nav défilante (≤ 900 px).
+- Fichiers : `apps/web/src/styles.css` réécrit ; `Shell.tsx` porte la navigation (compteur d'alertes, section Réglages admin) ; `Dashboard.tsx` n'a plus de liens de navigation ; tirets cadratins retirés des textes ; `index.html`, `favicon.svg`, deux specs e2e ajustées (ordre de tabulation, texte du lien Alertes).
+- Piège : sur mobile, `.shell` (grille, min-height 100vh) répartissait l'espace libre entre l'en-tête et le contenu → en-tête de 197 px ; corrigé avec `grid-template-rows: auto 1fr` dans le bloc ≤ 900 px.
+- État : build et e2e verts avant le correctif mobile, relance en cours ; reste à committer (sans `.claude/`), ouvrir la PR avec revue RAIDER et captures, attendre la CI, puis demander le go de fusion.

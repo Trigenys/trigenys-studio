@@ -128,7 +128,7 @@ function ReadinessList({ readiness }: { readiness: PublishReadiness }) {
         <li key={key} data-ok={check.ok}>
           <span aria-hidden="true">{check.ok ? "✓" : "✗"}</span> {CHECK_LABELS[key]}
           <span className="visually-hidden">{check.ok ? " : ok" : " : bloquant"}</span>
-          {!check.ok ? <span className="muted"> — {check.reason}</span> : null}
+          {!check.ok ? <span className="muted"> : {check.reason}</span> : null}
         </li>
       ))}
     </ul>
