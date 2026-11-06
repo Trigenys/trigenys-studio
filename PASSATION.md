@@ -194,3 +194,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Web : `src/alerts.ts` (libellés), hooks `alertKeys`/`useAlerts`/`useAcknowledgeAlert`/`useReconcileAlerts`/préférences, page `/alerts` (filtres URL état/priorité/produit, lien tâche + `#publication`, Acquitter, « E-mail non remis », préférences repliables, admin « Vérifier maintenant »), lien « Alertes (n) » sur le tableau de bord (+1 Tab dans le test clavier), mock e2e (`seedAlerts`, routes alerts/preferences), `alerts.spec.ts` 7 scénarios + axe.
 - Preuves : API tsc 0, vitest 146/146, openapi/contracts à jour, wrangler dry-run OK ; web tsc 0, vite build OK, Playwright 116/116 (desktop + Pixel 7).
 - Docs : ADR 0011, lessons 006 (rien dérivé de « maintenant » dans un réconciliateur) et 007 (drizzle retire le qualificatif en sous-requête corrélée), `docs/operations.md` (ALERT_*, WEB_APP_URL, gates). Reste : commit, push, PR « Closes #11 », CI, merge sur accord. Issues restantes ensuite : #15 (verrou propriétaire), #1/#2 (cadrage).
+
+## 2026-11-06 10:18 — Incrément 14 livré, clôture du backlog produit
+
+- PR #36 (#11 alertes et notifications) mergée en squash sur `main` : `4db19b2`. CI verte (impact, contracts, api, web, visual-qa, mobile-android, mobile-ios).
+- Issues #1 (Discovery) et #2 (Foundation) fermées avec commentaire de renvoi vers `docs/discovery.md`, ADR 0001–0011, `docs/architecture/target-architecture-draft.md`, `docs/operations.md`.
+- #15 (Project doublon) : vérifié en lecture seule, #25 ⊂ #24 (7 items, tous Done, tous présents dans #24). Suppression laissée au propriétaire ; commentaire posté sur l'issue. Seule issue encore ouverte.
+- Verrous propriétaire inchangés : Neon/Hyperdrive (appfactory#185), compte Cloudflare, `APPFACTORY_RELEASE_TOKEN`, suppression Project #25.
+- Suites hors backlog : renderer PNG (ADR 0008), aligner impact/release sur le SHA du registry, confirmer le contrat Buffer beta et `http-json-metrics` au premier run réel.
+- Prochaine étape : aucune issue produit en attente ; premier déploiement staging dès levée des verrous (`docs/operations.md` §6).
