@@ -1,6 +1,6 @@
 /* Trigenys Studio: one stylesheet, native CSS tokens, light and dark themes.
    Radius system: 6px small (chips, swatches), 8px controls (buttons, inputs),
-   12px surfaces (cards, panels). One accent colour; state colours are semantic. */
+   12px surfaces (cards, panels). Palette Trigenys (bordeaux, prune, turquoise, rose, encre, crème); state colours are semantic. */
 
 @import "@fontsource-variable/geist";
 
@@ -17,52 +17,52 @@
   --radius: var(--r-lg);
   --sidebar: 232px;
 
-  --bg: #f6f6f8;
+  --bg: #fcfafb;
   --surface: #ffffff;
-  --surface-2: #eeeff3;
-  --line: #e2e3e9;
-  --line-strong: #c9cbd4;
-  --text: #16181d;
-  --muted: #5e6270;
-  --accent: #2457d6;
-  --accent-strong: #2457d6;
-  --accent-hover: #1d49b8;
-  --accent-soft: rgba(36, 87, 214, 0.1);
+  --surface-2: #f3edf0;
+  --line: #e8dfe4;
+  --line-strong: #cdbec6;
+  --text: #251c2a;
+  --muted: #6a5a63;
+  --accent: #7f2044;
+  --accent-strong: #7f2044;
+  --accent-hover: #55162f;
+  --accent-soft: rgba(127, 32, 68, 0.1);
   --on-accent: #ffffff;
-  --success: #166534;
-  --success-soft: rgba(22, 101, 52, 0.12);
+  --success: #0f6f6d;
+  --success-soft: rgba(19, 143, 141, 0.12);
   --warn: #854d0e;
   --warn-soft: rgba(133, 77, 14, 0.12);
-  --danger: #b91c1c;
-  --danger-soft: rgba(185, 28, 28, 0.1);
-  --shadow: 0 1px 2px rgba(22, 24, 29, 0.05), 0 4px 16px rgba(22, 24, 29, 0.06);
-  --focus: 0 0 0 3px rgba(36, 87, 214, 0.35);
+  --danger: #b83232;
+  --danger-soft: rgba(184, 50, 50, 0.1);
+  --shadow: 0 1px 2px rgba(37, 28, 42, 0.05), 0 4px 16px rgba(37, 28, 42, 0.07);
+  --focus: 0 0 0 3px rgba(127, 32, 68, 0.35);
   color: var(--text);
   background: var(--bg);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111318;
-    --surface: #181b21;
-    --surface-2: #1f232b;
-    --line: #272b34;
-    --line-strong: #3a3f4b;
-    --text: #eceef2;
-    --muted: #9ba1ae;
-    --accent: #8db0ff;
-    --accent-strong: #3b6fe6;
-    --accent-hover: #4f80f2;
-    --accent-soft: rgba(141, 176, 255, 0.14);
+    --bg: #1a1219;
+    --surface: #251c2a;
+    --surface-2: #2e2433;
+    --line: #3b2f40;
+    --line-strong: #534556;
+    --text: #f6eef2;
+    --muted: #b5a4ad;
+    --accent: #e7a2b6;
+    --accent-strong: #a8335e;
+    --accent-hover: #b93d6a;
+    --accent-soft: rgba(231, 162, 182, 0.14);
     --on-accent: #ffffff;
-    --success: #4ade80;
-    --success-soft: rgba(74, 222, 128, 0.14);
+    --success: #5fd3cf;
+    --success-soft: rgba(95, 211, 207, 0.14);
     --warn: #fbbf24;
     --warn-soft: rgba(251, 191, 36, 0.14);
-    --danger: #f87171;
-    --danger-soft: rgba(248, 113, 113, 0.14);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.28);
-    --focus: 0 0 0 3px rgba(141, 176, 255, 0.45);
+    --danger: #f58787;
+    --danger-soft: rgba(245, 135, 135, 0.14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 20px rgba(0, 0, 0, 0.3);
+    --focus: 0 0 0 3px rgba(231, 162, 182, 0.45);
   }
 }
 
@@ -91,7 +91,7 @@ img { max-width: 100%; }
   padding: 20px 16px; border-right: 1px solid var(--line); background: var(--surface);
 }
 .brand { display: inline-flex; align-items: baseline; gap: 6px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; color: var(--text); font-size: 17px; padding: 4px 8px; }
-.brand span { color: var(--muted); font-weight: 500; }
+.brand span { color: var(--accent); font-weight: 500; }
 .global-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .nav-section { margin: 14px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .nav-link {
