@@ -60,3 +60,32 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — L'artefact CI `appfactory-visual-qa`/`mobile-screenshots` est inspecté lors de la revue de PR ; un test vert sans fichier produit est un signal d'alerte.
 
 **Leçon généralisée** — Un outil qui « réussit » sans produire de sortie doit être vérifié sur sa sortie, pas sur son code de retour.
+
+### LESSON-STUDIO-2026-004 — Des chiffres de mock plausibles passent pour des mesures
+
+**Contexte** — Reporting (#10) : le fournisseur de métriques `mock` renvoyait des impressions et clics vraisemblables, pratiques pour remplir l'écran en développement.
+
+**Failure / near miss** — Sans garde-fou, ces nombres auraient été persistés et affichés dans le rapport mensuel comme des mesures d'audience, indiscernables de vraies données pour le client.
+
+**Cause racine** — Le port de métriques ne distinguait pas « source vérifiée » et « simulation » ; le rapport n'exigeait aucune provenance sur un chiffre.
+
+**Résolution** — Drapeau `verified` sur le port ; seul un fournisseur vérifié peut écrire un relevé ; chaque relevé porte `provider`, `measuredAt`, `fetchedAt` ; sans source vérifiée la section dit « non connecté » et ne porte aucun chiffre (ADR 0010).
+
+**Prévention** — Tests `reporting.test.ts` : en mode mock le rapport ne contient aucune mesure et le rafraîchissement répond 409 ; en mode vérifié chaque ligne a sa provenance. Le test e2e vérifie l'absence du mot « Impressions » hors connexion.
+
+**Leçon généralisée** — Toute donnée destinée à un client qui ne naît pas dans le système doit porter sa provenance, et une simulation doit être impossible à persister, pas seulement désactivée par config.
+
+### LESSON-STUDIO-2026-005 — Requête sur la connexion externe à l'intérieur d'une transaction PGlite : blocage silencieux
+
+**Contexte** — Route `POST /reports/metrics/refresh` : l'audit ouvre une transaction (`audited(db, …, tx => …)`) et le rafraîchissement, écrit pour prendre `db`, interrogeait la connexion extérieure depuis l'intérieur.
+
+**Failure / near miss** — Sous PGlite (harnais de tests, une seule connexion) le test restait suspendu jusqu'au timeout du hook, sans erreur ; sous Neon le même code aurait seulement perdu l'atomicité.
+
+**Cause racine** — Deux voies d'accès à la base dans un même flux : la fonction métier ignorait la transaction en cours.
+
+**Résolution** — Les fonctions appelées sous `audited` acceptent `Db | Tx` et reçoivent `tx` ; aucun accès à `db` dans un callback transactionnel.
+
+**Prévention** — Convention consignée ici et dans `refresh.ts` ; un test qui dépasse son timeout sans sortie est désormais un signal à chercher d'abord ici.
+
+**Leçon généralisée** — Un callback transactionnel ne doit recevoir que la transaction ; un timeout muet dans un harnais mono-connexion est un verrou, pas une lenteur.
+

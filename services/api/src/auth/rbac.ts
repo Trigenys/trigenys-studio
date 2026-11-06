@@ -51,6 +51,9 @@ export const policies = {
   "social.read": roleOf(["admin", "operator", "reviewer"], "Reading social accounts"),
   "social.manage": roleOf(["admin"], "Managing social accounts"),
   "delivery.dispatch": roleOf(["admin"], "Running the publishing outbox"),
+  "report.read": roleOf(["admin", "operator", "reviewer"], "Reading reports"),
+  "objective.manage": roleOf(["admin"], "Managing contract objectives"),
+  "metrics.refresh": roleOf(["admin"], "Refreshing verified metrics"),
   "content.publish": (p, r) => {
     const base = roleOf(["admin", "operator"], "Publishing content")(p, r);
     if (!base.allowed) return base;

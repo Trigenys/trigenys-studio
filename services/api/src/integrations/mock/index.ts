@@ -104,6 +104,8 @@ export class MockRadar implements Radar {
 
 export class MockMetrics implements MetricsProvider {
   readonly name = "mock-metrics";
+  // Plausible numbers for demos only: never a verified measure.
+  readonly verified = false;
   async fetch(target: MetricTarget) {
     const base = parseInt((await sha256Hex(target.ref)).slice(0, 4), 16) % 1000;
     return {

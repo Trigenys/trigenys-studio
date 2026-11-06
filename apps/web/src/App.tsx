@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/Dashboard";
 import { ImportsPage } from "./pages/Imports";
 import { LoginPage } from "./pages/Login";
 import { NewTaskPage } from "./pages/NewTask";
+import { ReportingPage } from "./pages/Reporting";
 import { SocialAccountsPage } from "./pages/SocialAccounts";
 import { TaskPage } from "./pages/TaskPage";
 
@@ -33,6 +34,7 @@ function Authenticated() {
         <Route path="imports" element={<ImportsPage me={me.data} />} />
         <Route path="brand-kits" element={<BrandKitsPage me={me.data} />} />
         <Route path="calendar" element={<CalendarPage me={me.data} />} />
+        <Route path="reports" element={<ReportingPage me={me.data} />} />
         <Route path="social-accounts" element={<SocialAccountsPage me={me.data} />} />
         <Route path="tasks/new" element={<NewTaskPage me={me.data} />} />
         <Route path="tasks/:id" element={<TaskPage me={me.data} />} />

@@ -134,6 +134,7 @@ a { color: var(--accent); }
 .back { text-decoration: none; }
 .task-header h1 { margin: 0 0 8px; font-size: clamp(24px, 3vw, 32px); letter-spacing: -0.03em; }
 .stack { display: grid; gap: 8px; }
+.stack > * { min-width: 0; } /* grid children shrink below their content (wide tables scroll inside their card) */
 .stack label { font-size: 13px; color: var(--muted); }
 .stack input, .stack textarea, .stack select {
   width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: #fff; min-height: 44px;
@@ -257,3 +258,14 @@ a { color: var(--accent); }
 .calendar-entries { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 6px; }
 .calendar-entry { font-size: 14px; line-height: 1.6; }
 .calendar-entry time { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* Reporting: tables read on a phone by scrolling horizontally inside the card;
+   long URLs and configuration keys wrap instead of widening the page. */
+.table-wrap { overflow-x: auto; }
+.table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.kit-card { overflow-wrap: anywhere; }
+.table th, .table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--muted); font-weight: 600; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+meter { vertical-align: middle; min-width: 120px; }

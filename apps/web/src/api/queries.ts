@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AiInteraction,
   Calendar,
+  ContractObjective,
+  CreateContractObjective,
+  EditorialReport,
+  MetricsRefreshReport,
+  UpdateContractObjective,
+  UpdateProduct,
   CreateDelivery,
   CreateSocialAccount,
   Delivery,
@@ -514,5 +520,75 @@ export function useCalendar(from: string, to: string, productId: string | null) 
     queryKey: publishKeys.calendar(from, to, productId),
     queryFn: async () => unwrap(await api.GET("/calendar", { params: { query: { from, to, ...(productId ? { productId } : {}) } } })),
     staleTime: 30_000,
+  });
+}
+
+// ---- Reporting (ADR 0010) ----------------------------------------------
+// The report has two regimes: operational counts from Studio and verified
+// measures from a connected provider. Refreshing the measures or changing
+// an objective invalidates every report of the session.
+
+export const reportKeys = {
+  editorial: (month: string, productId: string | null) => ["report", month, productId ?? "all"] as const,
+  objectives: (productId: string) => ["objectives", productId] as const,
+};
+
+export function useEditorialReport(month: string, productId: string | null) {
+  return useQuery<EditorialReport, ApiError>({
+    queryKey: reportKeys.editorial(month, productId),
+    queryFn: async () => unwrap(await api.GET("/reports/editorial", { params: { query: { month, ...(productId ? { productId } : {}) } } })),
+    staleTime: 30_000,
+  });
+}
+
+export function useObjectives(productId: string | null) {
+  return useQuery<ContractObjective[], ApiError>({
+    queryKey: reportKeys.objectives(productId ?? ""),
+    queryFn: async () => unwrap(await api.GET("/products/{id}/objectives", { params: { path: { id: productId! } } })),
+    enabled: productId !== null,
+  });
+}
+
+function useInvalidateReports() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["report"] });
+    void qc.invalidateQueries({ queryKey: ["objectives"] });
+  };
+}
+
+export function useCreateObjective(productId: string) {
+  const invalidate = useInvalidateReports();
+  return useMutation<ContractObjective, ApiError, CreateContractObjective>({
+    mutationFn: async (body) =>
+      unwrap(await api.POST("/products/{id}/objectives", { params: { path: { id: productId }, header: idempotencyKey() }, body })),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateObjective() {
+  const invalidate = useInvalidateReports();
+  return useMutation<ContractObjective, ApiError, { id: string } & UpdateContractObjective>({
+    mutationFn: async ({ id, ...body }) => unwrap(await api.PATCH("/objectives/{id}", { params: { path: { id } }, body })),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation<Product, ApiError, { id: string } & UpdateProduct>({
+    mutationFn: async ({ id, ...body }) => unwrap(await api.PATCH("/products/{id}", { params: { path: { id } }, body })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.products });
+      void qc.invalidateQueries({ queryKey: ["report"] });
+    },
+  });
+}
+
+export function useRefreshMetrics() {
+  const invalidate = useInvalidateReports();
+  return useMutation<MetricsRefreshReport, ApiError, void>({
+    mutationFn: async () => unwrap(await api.POST("/reports/metrics/refresh", { params: { header: idempotencyKey() }, body: {} })),
+    onSuccess: invalidate,
   });
 }

@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -193,6 +194,8 @@ export const roleAssignmentRelations = relations(roleAssignment, ({ one }) => ({
 export const product = pgTable("product", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  // External SEO Monitor page for the product (link only; metrics come through the port).
+  seoMonitorUrl: text("seo_monitor_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -309,7 +312,7 @@ export const taskTransition = pgTable(
     reason: text("reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("task_transition_task_idx").on(t.taskId)],
+  (t) => [index("task_transition_task_idx").on(t.taskId), index("task_transition_to_state_idx").on(t.toState, t.createdAt)],
 );
 
 // Replay store for Idempotency-Key: one row per (key, actor); the fingerprint
@@ -598,6 +601,7 @@ export const delivery = pgTable(
     uniqueIndex("delivery_external_id_idx").on(t.externalId).where(sql`external_id IS NOT NULL`),
     index("delivery_status_scheduled_idx").on(t.status, t.scheduledAt),
     index("delivery_task_idx").on(t.taskId),
+    index("delivery_sent_at_idx").on(t.sentAt),
   ],
 );
 
@@ -625,4 +629,65 @@ export const deliveryAttempt = pgTable(
     retryAfterS: integer("retry_after_s"),
   },
   (t) => [uniqueIndex("delivery_attempt_n_idx").on(t.deliveryId, t.n)],
+);
+
+// ---------------------------------------------------------------------------
+// Reporting: contractual objectives per product (monthly, against operational
+// counts) and verified metric snapshots (append-only, one per provider,
+// target and measurement time). Mock providers never write here.
+// ---------------------------------------------------------------------------
+
+export const OBJECTIVE_METRICS = ["tasks_completed", "articles_published", "deliveries_sent"] as const;
+export type ObjectiveMetric = (typeof OBJECTIVE_METRICS)[number];
+
+export const contractObjective = pgTable(
+  "contract_objective",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    metric: text("metric").$type<ObjectiveMetric>().notNull(),
+    taskType: text("task_type"),
+    channel: text("channel"),
+    period: text("period").notNull().default("month"),
+    target: integer("target").notNull(),
+    active: boolean("active").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    check("contract_objective_target_check", sql`${t.target} > 0`),
+    uniqueIndex("contract_objective_scope_idx")
+      .on(t.productId, t.metric, sql`coalesce(${t.taskType}, '')`, sql`coalesce(${t.channel}, '')`, t.period)
+      .where(sql`active`),
+  ],
+);
+
+export const METRIC_TARGET_KINDS = ["deliverable", "url"] as const;
+export type MetricTargetKind = (typeof METRIC_TARGET_KINDS)[number];
+
+export const metricSnapshot = pgTable(
+  "metric_snapshot",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => product.id, { onDelete: "restrict" }),
+    targetKind: text("target_kind").$type<MetricTargetKind>().notNull(),
+    targetRef: text("target_ref").notNull(),
+    deliveryId: uuid("delivery_id").references(() => delivery.id, { onDelete: "set null" }),
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "set null" }),
+    provider: text("provider").notNull(),
+    measuredAt: timestamp("measured_at", { withTimezone: true }).notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
+    metrics: jsonb("metrics").$type<Record<string, number>>().notNull().default({}),
+  },
+  (t) => [
+    uniqueIndex("metric_snapshot_dedupe_idx").on(t.provider, t.targetKind, t.targetRef, t.measuredAt),
+    index("metric_snapshot_target_idx").on(t.targetKind, t.targetRef, t.fetchedAt),
+    index("metric_snapshot_product_idx").on(t.productId, t.measuredAt),
+  ],
 );

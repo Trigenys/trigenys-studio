@@ -10,9 +10,16 @@ export const ProductSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    seoMonitorUrl: z.string().nullable().openapi({ description: "External SEO Monitor page for this product (ADR 0010)" }),
     createdAt: z.iso.datetime(),
   })
   .openapi("Product");
+
+const UpdateProductSchema = z
+  .object({
+    seoMonitorUrl: z.url({ protocol: /^https$/ }).max(500).nullable(),
+  })
+  .openapi("UpdateProduct");
 
 const CreateProductSchema = z
   .object({
@@ -63,6 +70,23 @@ const createRoute_ = createRoute({
   },
 });
 
+const updateRoute = createRoute({
+  method: "patch",
+  path: "/products/{id}",
+  tags: ["pipeline"],
+  summary: "Update a product's settings (admin, audited)",
+  security,
+  middleware: [authorize("product.manage", (c) => ({ type: "product", id: c.req.param("id"), productId: c.req.param("id") }))] as const,
+  request: { params: z.object({ id: z.string().min(1) }), body: { content: { "application/json": { schema: UpdateProductSchema } }, required: true } },
+  responses: {
+    200: { description: "Updated", content: { "application/json": { schema: ProductSchema } } },
+    400: problemResponse("Invalid body (https URL expected)"),
+    401: problemResponse("No valid session"),
+    403: problemResponse("Not an admin"),
+    404: problemResponse("Unknown product"),
+  },
+});
+
 const serialise = (row: typeof product.$inferSelect) => ({ ...row, createdAt: row.createdAt.toISOString() });
 
 export const productRoutes = new OpenAPIHono<AppEnv>()
@@ -89,4 +113,23 @@ export const productRoutes = new OpenAPIHono<AppEnv>()
       async (tx) => (await tx.insert(product).values(body).returning())[0]!,
     );
     return c.json(serialise(created), 201);
+  })
+  .openapi(updateRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const body = c.req.valid("json");
+    const [existing] = await c.var.db.select().from(product).where(eq(product.id, id));
+    if (!existing) throw new ProblemError(404, "Unknown product");
+    if (existing.seoMonitorUrl === body.seoMonitorUrl) return c.json(serialise(existing), 200);
+    const updated = await audited(
+      c.var.db,
+      {
+        actor: c.var.principal,
+        action: "product.manage",
+        resource: { type: "product", id, productId: id },
+        requestId: c.var.requestId,
+        details: { seoMonitorUrl: body.seoMonitorUrl },
+      },
+      async (tx) => (await tx.update(product).set({ seoMonitorUrl: body.seoMonitorUrl }).where(eq(product.id, id)).returning())[0]!,
+    );
+    return c.json(serialise(updated), 200);
   });

@@ -2,6 +2,7 @@ import type { Bindings, IntegrationMode } from "../env.ts";
 import { AnthropicLlm } from "./anthropic/llm.ts";
 import { BufferPublisher } from "./buffer/publisher.ts";
 import { EditorialOsRadar } from "./editorial-os/radar.ts";
+import { HttpJsonMetrics } from "./http-json/metrics.ts";
 import { InsightCms } from "./insight/cms.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
@@ -40,6 +41,12 @@ const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations
       throw new IntegrationNotAvailableError("cms", "live", "INTEGRATION_CMS_MODE=live requires INSIGHT_BASE_URL and the INSIGHT_PUBLISHING_TOKEN secret");
     }
     return new InsightCms({ baseUrl: env.INSIGHT_BASE_URL, token: env.INSIGHT_PUBLISHING_TOKEN });
+  },
+  metrics: (env) => {
+    if (!env.METRICS_BASE_URL || !env.METRICS_TOKEN) {
+      throw new IntegrationNotAvailableError("metrics", "live", "INTEGRATION_METRICS_MODE=live requires METRICS_BASE_URL and the METRICS_TOKEN secret");
+    }
+    return new HttpJsonMetrics({ baseUrl: env.METRICS_BASE_URL, token: env.METRICS_TOKEN });
   },
   radar: (env) => {
     if (!env.EDITORIAL_OS_BASE_URL || !env.EDITORIAL_OS_TOKEN) {

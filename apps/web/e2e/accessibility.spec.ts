@@ -69,3 +69,11 @@ test("social accounts page has no serious accessibility violation", async ({ pag
   await expect(page.getByRole("list", { name: "Comptes" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });
+
+test("reporting page has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page, { admin: true });
+  await page.goto("/reports");
+  await expect(page.getByRole("heading", { name: "Rapport éditorial" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Tâches par produit et type" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});

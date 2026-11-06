@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EditorialOsRadar } from "../src/integrations/editorial-os/radar.ts";
+import { HttpJsonMetrics } from "../src/integrations/http-json/metrics.ts";
+import { createIntegrations, IntegrationNotAvailableError } from "../src/integrations/registry.ts";
 import { InsightCms } from "../src/integrations/insight/cms.ts";
 import { UpstreamError } from "../src/integrations/upstream.ts";
 
@@ -69,5 +71,34 @@ describe("EditorialOsRadar", () => {
   it("rejects an unexpected payload", async () => {
     const radar = new EditorialOsRadar({ baseUrl: "https://os.example", token: "tok", fetch: fetchStub(200, { items: [] }) });
     await expect(radar.listProposals({ limit: 10 })).rejects.toBeInstanceOf(UpstreamError);
+  });
+});
+
+describe("HttpJsonMetrics (SEO Monitor contract v1)", () => {
+  it("asks /v1/metrics with the bearer token and returns a verified snapshot", async () => {
+    const f = fetchStub(200, { measuredAt: "2026-11-10T06:00:00Z", metrics: { impressions: 120, clicks: 9 } });
+    const m = new HttpJsonMetrics({ baseUrl: "https://seo.example/", token: "secret", fetch: f });
+    expect(m.verified).toBe(true);
+    const out = await m.fetch({ kind: "url", ref: "https://insight.example/fr/posts/a?b=1" });
+    expect(f.calls[0]!.url).toBe("https://seo.example/v1/metrics?kind=url&ref=https%3A%2F%2Finsight.example%2Ffr%2Fposts%2Fa%3Fb%3D1");
+    expect((f.calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer secret");
+    expect(out).toEqual({ target: { kind: "url", ref: "https://insight.example/fr/posts/a?b=1" }, measuredAt: "2026-11-10T06:00:00Z", metrics: { impressions: 120, clicks: 9 } });
+  });
+
+  it("maps 404 to null, rejects a malformed payload and surfaces upstream errors without the token", async () => {
+    expect(await new HttpJsonMetrics({ baseUrl: "https://seo.example", token: "secret", fetch: fetchStub(404, { error: "unknown" }) }).fetch({ kind: "url", ref: "x" })).toBeNull();
+    await expect(new HttpJsonMetrics({ baseUrl: "https://seo.example", token: "secret", fetch: fetchStub(200, { metrics: { a: "NaN" } }) }).fetch({ kind: "url", ref: "x" })).rejects.toThrow(/Unexpected metrics payload/);
+    const err = await new HttpJsonMetrics({ baseUrl: "https://seo.example", token: "secret", fetch: fetchStub(503, {}) }).fetch({ kind: "deliverable", ref: "x" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UpstreamError);
+    expect((err as UpstreamError).message).toContain("HTTP 503");
+    expect((err as UpstreamError).message).not.toContain("secret");
+  });
+
+  it("is wired by the registry only with a base URL and a token; the default stays the unverified mock", () => {
+    expect(() => createIntegrations({ INTEGRATION_METRICS_MODE: "live" })).toThrow(IntegrationNotAvailableError);
+    expect(() => createIntegrations({ INTEGRATION_METRICS_MODE: "live", METRICS_BASE_URL: "https://seo.example" })).toThrow(/METRICS_TOKEN/);
+    const live = createIntegrations({ INTEGRATION_METRICS_MODE: "live", METRICS_BASE_URL: "https://seo.example", METRICS_TOKEN: "t" });
+    expect(live.metrics).toBeInstanceOf(HttpJsonMetrics);
+    expect(createIntegrations({}).metrics).toMatchObject({ name: "mock-metrics", verified: false });
   });
 });

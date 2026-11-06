@@ -91,9 +91,13 @@ export type MetricSnapshot = {
   metrics: Record<string, number>;
 };
 
+// `verified` says whether the numbers come from a real measurement source.
+// A mock is never verified: its snapshots are neither persisted nor shown as
+// measures. `fetch` returns null when the provider has not measured the target yet.
 export interface MetricsProvider {
   readonly name: string;
-  fetch(target: MetricTarget): Promise<MetricSnapshot>;
+  readonly verified: boolean;
+  fetch(target: MetricTarget): Promise<MetricSnapshot | null>;
 }
 
 export type LlmRequest = {

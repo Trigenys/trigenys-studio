@@ -50,6 +50,20 @@ export type DispatchReport = components["schemas"]["DispatchReport"];
 export type CalendarEntry = components["schemas"]["CalendarEntry"];
 export type CalendarDueTask = components["schemas"]["CalendarDueTask"];
 export type Calendar = components["schemas"]["Calendar"];
+export type EditorialReport = components["schemas"]["EditorialReport"];
+export type ContractObjective = components["schemas"]["ContractObjective"];
+export type CreateContractObjective = components["schemas"]["CreateContractObjective"];
+export type UpdateContractObjective = components["schemas"]["UpdateContractObjective"];
+export type ObjectiveProgress = components["schemas"]["ObjectiveProgress"];
+export type TaskCounts = components["schemas"]["TaskCounts"];
+export type ChannelCampaign = components["schemas"]["ChannelCampaign"];
+export type PublishedArticle = components["schemas"]["PublishedArticle"];
+export type ReportProduct = components["schemas"]["ReportProduct"];
+export type MetricSnapshot = components["schemas"]["MetricSnapshot"];
+export type VerifiedMetrics = components["schemas"]["VerifiedMetrics"];
+export type MetricsRefreshReport = components["schemas"]["MetricsRefreshReport"];
+export type MetricsRefreshRequest = components["schemas"]["MetricsRefreshRequest"];
+export type UpdateProduct = components["schemas"]["UpdateProduct"];
 
 // Typed HTTP client shared by the web app (cookie session) and tooling.
 // Mobile clients are generated from openapi.json with openapi-generator (Kotlin).

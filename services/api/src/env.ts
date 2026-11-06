@@ -44,6 +44,13 @@ export type Bindings = {
   // Live radar adapter (Editorial OS operator API): same split.
   EDITORIAL_OS_BASE_URL?: string;
   EDITORIAL_OS_TOKEN?: string;
+  // Live metrics adapter (INTEGRATION_METRICS_MODE=live): generic HTTP JSON
+  // contract (ADR 0010). METRICS_TOKEN is a Worker secret. Refresh tuning:
+  // minutes before a target is measured again, targets per cron run.
+  METRICS_BASE_URL?: string;
+  METRICS_TOKEN?: string;
+  METRICS_REFRESH_MINUTES?: string;
+  METRICS_BATCH?: string;
 };
 
 export type Variables = {

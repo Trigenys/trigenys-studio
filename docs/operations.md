@@ -49,7 +49,9 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `APPFACTORY_RELEASE_TOKEN` | GitHub secret | secret | Release Please uniquement |
 | `BUFFER_API_KEY` | Worker secret (`wrangler secret put BUFFER_API_KEY`) | secret | requis quand `INTEGRATION_PUBLISHER_MODE=live` ; jamais journalisé |
 | `BUFFER_BASE_URL`, `BUFFER_ORGANIZATION_ID`, `PUBLISH_LEAD_MINUTES` | `wrangler.jsonc` | config | API Buffer, organisation (facultatif), avance de remise au fournisseur (10 min) ; cron `*/5 * * * *` déclenche l'outbox |
-| Clés des intégrations (CMS, publication, métriques, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
+| `METRICS_TOKEN` | Worker secret (`wrangler secret put METRICS_TOKEN`) | secret | bearer du contrat HTTP JSON des mesures (ADR 0010) ; requis quand `INTEGRATION_METRICS_MODE=live` ; jamais journalisé |
+| `METRICS_BASE_URL`, `METRICS_REFRESH_MINUTES`, `METRICS_BATCH` | `wrangler.jsonc` | config | base du fournisseur de mesures (SEO Monitor ou proxy), intervalle minimal de rafraîchissement, cibles par passage ; en mode `mock` aucun relevé n'est écrit |
+| Clés des intégrations (CMS, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
 
 Vérification avant chaque release : la recherche de `AUTH_SECRET=` ou `postgresql://` dans
 le dépôt (hors `*.example` et `docs/`) doit rester vide.
@@ -63,7 +65,7 @@ touchées s'exécutent ; un changement sans impact est un no-op.
 |---|---|---|
 | `web` | typecheck, build, Playwright desktop + Pixel 7 : parcours, clavier, transitions de validation (approuver, rejeter, renvoyer avec motif), axe WCAG 2.1 A/AA sur connexion, tableau de bord et page tâche | job `web` |
 | `visual-qa` | pages publiques servies par le build : captures desktop/mobile, CTA accessible au clavier, overflow, images externes, motion réduite, axe, budgets Lighthouse (LCP ≤ 2,5 s, CLS ≤ 0,1, TBT ≤ 200 ms) | `reusable-visual-qa.yml`, artefact `appfactory-visual-qa` |
-| `api` | typecheck, tests vitest (machine d'états, approbations liées au hash, Idempotency-Key, RBAC, audit), contrat OpenAPI à jour, bundle Worker en *dry run* | job `api` |
+| `api` | typecheck, tests vitest (machine d'états, approbations liées au hash, Idempotency-Key, RBAC, audit, reporting : régimes opérationnel/vérifié, objectifs, rafraîchissement), contrat OpenAPI à jour, bundle Worker en *dry run* | job `api` |
 | `contracts` | client généré conforme à `openapi.json` | job `contracts` |
 | `mobile-android` / `mobile-ios` | tests communs, capture Roborazzi (artefact), APK debug ; framework iOS lié | jobs mobile |
 | `release-config` | cohérence Release Please (config ⊆ manifest) | job `release-config` |

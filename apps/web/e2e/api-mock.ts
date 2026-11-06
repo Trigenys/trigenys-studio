@@ -1,6 +1,8 @@
 import type { Page, Route } from "@playwright/test";
 import type {
   AiInteraction,
+  ContractObjective,
+  EditorialReport,
   BrandKit,
   CalendarEntry,
   Comment,
@@ -28,9 +30,9 @@ export const me: Me = {
 };
 
 export const products: Product[] = [
-  { id: "insight", name: "Trigenys Insight", createdAt: "2026-01-01T00:00:00.000Z" },
-  { id: "precis", name: "Précis Translator", createdAt: "2026-01-01T00:00:00.000Z" },
-  { id: "atelier", name: "Atelier Maître", createdAt: "2026-01-01T00:00:00.000Z" },
+  { id: "insight", name: "Trigenys Insight", seoMonitorUrl: null, createdAt: "2026-01-01T00:00:00.000Z" },
+  { id: "precis", name: "Précis Translator", seoMonitorUrl: null, createdAt: "2026-01-01T00:00:00.000Z" },
+  { id: "atelier", name: "Atelier Maître", seoMonitorUrl: null, createdAt: "2026-01-01T00:00:00.000Z" },
 ];
 
 const iso = (d: Date) => d.toISOString();
@@ -130,7 +132,17 @@ export const detailOf = (t: Task, versions: ContentVersion[] = []): TaskDetail =
   };
 };
 
-type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean; admin?: boolean; approvedKit?: boolean; publishable?: boolean };
+type Options = {
+  signedIn?: boolean;
+  tasksStatus?: number;
+  updateStatus?: number;
+  reviewerOnly?: boolean;
+  admin?: boolean;
+  approvedKit?: boolean;
+  publishable?: boolean;
+  /** A verified metrics provider is connected (SEO Monitor contract). */
+  metricsConnected?: boolean;
+};
 
 // Visual formats as seeded by the Worker, and a tiny SVG standing for any
 // logo or rendered visual: the UI only needs a displayable image.
@@ -194,7 +206,7 @@ const problem = (status: number, title: string) => ({ type: "about:blank", title
 // content, optimistic version on updates, transitions recorded in history.
 export async function mockApi(
   page: Page,
-  { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false, admin = false, approvedKit = true, publishable = false }: Options = {},
+  { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false, admin = false, approvedKit = true, publishable = false, metricsConnected = false }: Options = {},
 ) {
   const whoami: Me = reviewerOnly
     ? { ...me, grants: [{ role: "reviewer", productId: null }] }
@@ -214,6 +226,8 @@ export async function mockApi(
     history: new Map<string, TaskTransition[]>(),
     sources: new Map<string, TaskSource[]>(),
     interactions: new Map<string, AiInteraction[]>(),
+    products: products.map((p) => ({ ...p })),
+    objectives: [] as ContractObjective[],
   };
   const find = (id: string | undefined) => store.tasks.find((x) => x.id === id);
   const detail = (t: Task) => detailOf(t, store.versions.get(t.id));
@@ -274,7 +288,7 @@ export async function mockApi(
     Object.assign(item, { status: "ignored", decidedBy: me.userId, decidedAt: stamp() });
     return json(route, 200, item);
   });
-  await page.route("**/products", (route) => json(route, 200, products));
+  await page.route("**/products", (route) => json(route, 200, store.products));
 
   await page.route("**/tasks?**", (route) => {
     if (tasksStatus !== 200) return json(route, tasksStatus, problem(tasksStatus, "Service indisponible"));
@@ -705,5 +719,155 @@ export async function mockApi(
       store.tasks[0]!.state = "failed";
     }
     return json(route, 204, null);
+  });
+
+
+  // ---- Reporting (ADR 0010) ------------------------------------------
+  // Operational counts come from the store; verified measures only exist when
+  // a provider is connected, otherwise the section carries no figure at all.
+  const isAdmin = () => whoami.grants.some((g) => g.role === "admin");
+  const DONE: Task["state"][] = ["published", "measured"];
+  await page.route("**/reports/editorial**", (route) => {
+    const url = new URL(route.request().url());
+    const month = url.searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
+    const productId = url.searchParams.get("productId");
+    if (productId && !store.products.some((p) => p.id === productId)) return json(route, 404, problem(404, "Unknown product"));
+    const scoped = store.products.filter((p) => !productId || p.id === productId);
+    const from = new Date(`${month}-01T00:00:00Z`);
+    const to = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1));
+    const inMonth = (iso: string | null) => iso !== null && new Date(iso) >= from && new Date(iso) < to;
+    const counts = new Map<string, EditorialReport["operational"]["tasks"][number]>();
+    for (const t of store.tasks.filter((t) => scoped.some((p) => p.id === t.productId))) {
+      const key = `${t.productId}/${t.type}`;
+      const row = counts.get(key) ?? { productId: t.productId, type: t.type, due: 0, done: 0, late: 0 };
+      if (inMonth(t.dueAt)) {
+        row.due += 1;
+        if (new Date(t.dueAt!) < new Date() && !DONE.includes(t.state) && t.state !== "rejected") row.late += 1;
+      }
+      if (DONE.includes(t.state)) row.done += 1;
+      counts.set(key, row);
+    }
+    const campaigns = new Map<string, EditorialReport["operational"]["campaigns"][number]>();
+    for (const d of store.deliveries) {
+      const t = find(d.taskId);
+      const a = store.accounts.find((x) => x.id === d.socialAccountId);
+      if (!t || !a || !scoped.some((p) => p.id === t.productId) || !inMonth(d.sentAt ?? d.scheduledAt)) continue;
+      const key = `${t.productId}/${a.channel}`;
+      const row = campaigns.get(key) ?? { productId: t.productId, channel: a.channel, scheduled: 0, handedOff: 0, sent: 0, failed: 0, cancelled: 0 };
+      if (d.status === "scheduled") row.scheduled += 1;
+      if (d.status === "handed_off") row.handedOff += 1;
+      if (d.status === "sent") row.sent += 1;
+      if (d.status === "failed") row.failed += 1;
+      if (d.status === "cancelled") row.cancelled += 1;
+      campaigns.set(key, row);
+    }
+    const objectives = store.objectives
+      .filter((o) => o.active && scoped.some((p) => p.id === o.productId))
+      .map((o) => {
+        const actual =
+          o.metric === "tasks_completed"
+            ? store.tasks.filter((t) => t.productId === o.productId && DONE.includes(t.state) && (!o.taskType || t.type === o.taskType)).length
+            : 0;
+        return { objective: o, actual, ratio: Math.round((actual / o.target) * 1000) / 1000 };
+      });
+    const verified: EditorialReport["verified"] = scoped.map((p) =>
+      metricsConnected
+        ? {
+            productId: p.id,
+            status: "connected" as const,
+            provider: "http-json-metrics",
+            snapshots:
+              p.id === "insight"
+                ? [
+                    {
+                      targetKind: "url" as const,
+                      targetRef: "https://insight.example/fr/posts/neon-vs-supabase",
+                      provider: "http-json-metrics",
+                      measuredAt: `${month}-03T06:00:00.000Z`,
+                      fetchedAt: `${month}-03T06:05:00.000Z`,
+                      metrics: { impressions: 1240, clicks: 87 },
+                    },
+                  ]
+                : [],
+            totals: (p.id === "insight" ? { impressions: 1240, clicks: 87 } : {}) as Record<string, number>,
+          }
+        : {
+            productId: p.id,
+            status: "not_connected" as const,
+            reason: "Aucune source vérifiée n'est connectée (fournisseur mock-metrics) : configurez INTEGRATION_METRICS_MODE=live, METRICS_BASE_URL et le secret METRICS_TOKEN.",
+          },
+    );
+    const body: EditorialReport = {
+      month,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      generatedAt: stamp(),
+      operational: { tasks: [...counts.values()], publishedArticles: [], campaigns: [...campaigns.values()] },
+      objectives,
+      verified,
+      products: scoped.map((p) => ({ id: p.id, name: p.name, seoMonitorUrl: p.seoMonitorUrl })),
+    };
+    return json(route, 200, body);
+  });
+
+  await page.route("**/reports/metrics/refresh", (route) => {
+    if (!isAdmin()) return json(route, 403, problem(403, "Admins only"));
+    if (!metricsConnected) {
+      return json(route, 409, {
+        ...problem(409, "Metrics provider not connected"),
+        type: "https://trigenys.com/problems/metrics-not-connected",
+        detail: "Aucune source vérifiée n'est connectée.",
+      });
+    }
+    return json(route, 200, { provider: "http-json-metrics", considered: 2, written: 2, unchanged: 0, errors: [] });
+  });
+
+  await page.route("**/products/*/objectives", (route) => {
+    const productId = new URL(route.request().url()).pathname.split("/").at(-2)!;
+    const mine = store.objectives.filter((o) => o.productId === productId);
+    if (route.request().method() === "GET") return json(route, 200, mine);
+    if (!isAdmin()) return json(route, 403, problem(403, "Admins only"));
+    const body = route.request().postDataJSON() as { metric: ContractObjective["metric"]; taskType?: string; channel?: string; target: number };
+    if (mine.some((o) => o.active && o.metric === body.metric && (o.taskType ?? null) === (body.taskType ?? null) && (o.channel ?? null) === (body.channel ?? null))) {
+      return json(route, 409, problem(409, "Objective already defined"));
+    }
+    const o: ContractObjective = {
+      id: uuid(),
+      productId,
+      metric: body.metric,
+      taskType: body.taskType ?? null,
+      channel: body.channel ?? null,
+      period: "month",
+      target: body.target,
+      active: true,
+      version: 1,
+      createdBy: whoami.userId,
+      createdAt: stamp(),
+      updatedAt: stamp(),
+    };
+    store.objectives.push(o);
+    return json(route, 201, o);
+  });
+
+  await page.route("**/objectives/*", (route) => {
+    if (!isAdmin()) return json(route, 403, problem(403, "Admins only"));
+    const id = new URL(route.request().url()).pathname.split("/").at(-1)!;
+    const o = store.objectives.find((x) => x.id === id);
+    if (!o) return json(route, 404, problem(404, "Unknown objective"));
+    const body = route.request().postDataJSON() as { version: number; target?: number; active?: boolean };
+    if (body.version !== o.version) return json(route, 409, problem(409, "Version conflict"));
+    Object.assign(o, { target: body.target ?? o.target, active: body.active ?? o.active, version: o.version + 1, updatedAt: stamp() });
+    return json(route, 200, o);
+  });
+
+  await page.route("**/products/*", (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    if (!isAdmin()) return json(route, 403, problem(403, "Admins only"));
+    const id = new URL(route.request().url()).pathname.split("/").at(-1)!;
+    const p = store.products.find((x) => x.id === id);
+    if (!p) return json(route, 404, problem(404, "Unknown product"));
+    const body = route.request().postDataJSON() as { seoMonitorUrl: string | null };
+    p.seoMonitorUrl = body.seoMonitorUrl;
+    return json(route, 200, p);
   });
 }
