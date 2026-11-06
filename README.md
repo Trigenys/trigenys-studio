@@ -32,6 +32,25 @@ npm run generate -w packages/contracts    # régénère le client TypeScript
 
 `npm run dev` (Vite, port 5173) proxie les routes de l'API vers le Worker sur `localhost:8787` : lancer aussi `npm run dev -w services/api`. « Ma journée » (`/today`, `/review`, `/scheduled`, `/late`) dérive ses vues côté client (`apps/web/src/views.ts`) à partir d'une liste par produit ; l'URL porte la vue, le produit (`?product=`) et la recherche (`?q=`). La session vient de `GET /me` ; la connexion passe par le client Better Auth (lien magique, passkey). En production, `VITE_API_URL` désigne le Worker (vide = même origine). Tests : `npm test -w apps/web` lance Playwright (profils desktop et Pixel 7) contre une API mockée au niveau réseau (`apps/web/e2e/api-mock.ts`), sans base ni Worker. Voir ADR 0005.
 
+### Tester l'application en local (sans déploiement)
+
+1. **Base** : créer une branche de développement sur un projet Neon (gratuit), copier
+   `services/api/.dev.vars.example` en `services/api/.dev.vars` et y coller l'URI dans
+   `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` ; `.dev.vars` n'est jamais commis.
+2. **Migrations** : `DATABASE_URL="<même URI>" npm run db:migrate -w services/api`.
+3. **Lancer** : `npm run dev -w services/api` (Worker, 8787) puis `npm run dev` (web, 5173).
+   Toutes les intégrations sont en `mock` : rien ne part vers Buffer, le CMS ou un fournisseur
+   d'e-mail.
+4. **Se connecter** : sur `http://localhost:5173`, demander un lien magique ; le lien est écrit
+   dans la console du Worker (`[mock-mailer]`), l'ouvrir dans le navigateur.
+5. **Premier admin et produits** : aucun rôle ni produit n'existe au départ, et l'interface
+   ne les crée pas (routes admin `POST /roles`, `POST /products`). Une seule fois, après la
+   première connexion, exécuter `services/api/scripts/bootstrap-local.sql` dans la console
+   SQL Neon (ou `psql`) avec votre e-mail : il donne le rôle admin et crée les trois produits.
+   Rejouable sans effet.
+6. **Données** : créer un brand kit, des comptes sociaux et des tâches depuis l'interface ;
+   « Vérifier maintenant » sur `/alerts` calcule les alertes.
+
 ### API en local
 
 `npm run dev -w services/api` démarre le Worker avec wrangler. Les intégrations sont en mode `mock` par défaut (`INTEGRATION_<X>_MODE`). Pour la base, définir `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` sur une branche Neon de développement ; aucune URI n'est commise. La CI vérifie que `openapi.json` et `schema.d.ts` sont à jour par rapport au code.
