@@ -263,3 +263,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Correctif 64e19ec : wrapper `.filters` (flex, bordures haut/bas), `.filter-group` avec libellé visible `.filter-label` (aria-label conservé).
 - Preuves : 116 e2e passés (port 5190 libre), `npm run build` vert, rendu vérifié dans le navigateur.
 - En attente : CI sur 64e19ec puis accord utilisateur pour le squash merge de la PR #40.
+
+## 2026-11-06 16:23 — Fusion de la PR #40 (refonte visuelle)
+
+- PR #40 fusionnée en squash sur main (05a06e9), branche feat/web-visual-redesign supprimée. Local sur main à jour.
+- Palette actuelle : neutre + accent bleu #2457d6 ; aucune charte Trigenys dans le dépôt (favicon placeholder).
+- Prochaine étape : l'utilisateur fournit codes hex ou logo Trigenys → nouvelle branche `feat/web-brand-palette`, aligner accent/boutons/pastilles/favicon, vérifier contrastes AA clair + sombre, 116 e2e, PR distincte.
