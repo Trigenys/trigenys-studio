@@ -37,6 +37,8 @@ export const pipelineDefinition: PipelineDefinition = {
     { from: "needs_fix", to: "preparing", action: "content.write" },
     { from: "rejected", to: "preparing", action: "content.write" },
     { from: "approved", to: "scheduled", action: "content.publish", guard: "approval_valid" },
+    // Back to approved when every delivery was cancelled (settled by the outbox or requested).
+    { from: "scheduled", to: "approved", action: "content.publish", guard: "approval_valid" },
     { from: "scheduled", to: "published", action: "content.publish" },
     { from: "scheduled", to: "failed", action: "content.publish" },
     { from: "failed", to: "approved", action: "content.publish", guard: "approval_valid" },

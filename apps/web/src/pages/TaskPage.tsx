@@ -5,6 +5,7 @@ import { useDecide, useTask, useTransition, useTransitionHistory } from "../api/
 import { Assistant } from "../components/Assistant";
 import { Comments } from "../components/Comments";
 import { Dossier } from "../components/Dossier";
+import { PublicationSection } from "../components/PublicationSection";
 import { ErrorState, Loading } from "../components/States";
 import { TaskEditForm } from "../components/TaskEditForm";
 import { VersionForm, VersionHistory } from "../components/VersionEditor";
@@ -120,6 +121,11 @@ export function TaskPage({ me }: { me: Me }) {
       <section aria-labelledby="visuals-title" className="card">
         <h2 id="visuals-title">Visuels</h2>
         <VisualsSection taskId={t.id} taskTitle={t.title} writer={writer && !frozen} />
+      </section>
+
+      <section aria-labelledby="publication-title" className="card">
+        <h2 id="publication-title">Publication</h2>
+        <PublicationSection task={t} writer={writer} />
       </section>
 
       <section aria-labelledby="assistant-title" className="card">

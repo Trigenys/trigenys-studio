@@ -2,11 +2,16 @@ import type { Page, Route } from "@playwright/test";
 import type {
   AiInteraction,
   BrandKit,
+  CalendarEntry,
   Comment,
   ContentVersion,
+  Delivery,
+  DeliveryAttempt,
   ImportItem,
   Me,
   Product,
+  PublishReadiness,
+  SocialAccount,
   Task,
   TaskDetail,
   TaskSource,
@@ -53,6 +58,32 @@ export const tasks: Task[] = [
 ];
 
 const FROZEN: Task["state"][] = ["scheduled", "published", "measured"];
+// States from which a delivery can be planned: the approval covers the content.
+const PUBLISHABLE: Task["state"][] = ["approved", "scheduled", "failed"];
+
+// Social accounts an admin has mapped, one per product and channel.
+const seedAccount = (id: string, productId: string, channel: SocialAccount["channel"], handle: string, displayName: string): SocialAccount => ({
+  id,
+  productId,
+  channel,
+  provider: "mock",
+  externalRef: `ch-${productId}-${channel}`,
+  handle,
+  displayName,
+  active: true,
+  version: 1,
+  createdBy: "u-admin",
+  createdAt: "2026-01-05T00:00:00.000Z",
+  updatedAt: "2026-01-05T00:00:00.000Z",
+});
+export const socialAccounts: SocialAccount[] = [
+  seedAccount("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "insight", "linkedin", "@trigenys-insight", "Trigenys Insight"),
+  seedAccount("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "precis", "linkedin", "@precis-translator", "Précis Translator"),
+];
+export const providerChannels = [
+  { externalRef: "ch-insight-linkedin", service: "linkedin", name: "Trigenys Insight" },
+  { externalRef: "ch-insight-x", service: "x", name: "Trigenys X" },
+];
 
 const seedVersion = (t: Task): ContentVersion | null =>
   t.state === "qualifying"
@@ -90,14 +121,16 @@ export const detailOf = (t: Task, versions: ContentVersion[] = []): TaskDetail =
     ...t,
     brief: t.brief || "Annoncer la disponibilité d'Insight aux équipes data.",
     latestVersion,
-    latestApproval: null,
-    approvalValid: false,
+    latestApproval: PUBLISHABLE.includes(t.state)
+      ? { id: `a-${t.id.slice(0, 8)}`, taskId: t.id, contentVersionId: latestVersion?.id ?? "", contentHash: "sha256:seed", assetSetHash: "sha256:none", approverId: "u-reviewer", decision: "approved" as const, comment: null, createdAt: "2026-01-03T00:00:00.000Z" }
+      : null,
+    approvalValid: PUBLISHABLE.includes(t.state),
     currentAssetSetHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     allowedTransitions: allowed(t, latestVersion !== null),
   };
 };
 
-type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean; admin?: boolean; approvedKit?: boolean };
+type Options = { signedIn?: boolean; tasksStatus?: number; updateStatus?: number; reviewerOnly?: boolean; admin?: boolean; approvedKit?: boolean; publishable?: boolean };
 
 // Visual formats as seeded by the Worker, and a tiny SVG standing for any
 // logo or rendered visual: the UI only needs a displayable image.
@@ -161,7 +194,7 @@ const problem = (status: number, title: string) => ({ type: "about:blank", title
 // content, optimistic version on updates, transitions recorded in history.
 export async function mockApi(
   page: Page,
-  { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false, admin = false, approvedKit = true }: Options = {},
+  { signedIn = true, tasksStatus = 200, updateStatus = 200, reviewerOnly = false, admin = false, approvedKit = true, publishable = false }: Options = {},
 ) {
   const whoami: Me = reviewerOnly
     ? { ...me, grants: [{ role: "reviewer", productId: null }] }
@@ -169,7 +202,10 @@ export async function mockApi(
       ? { ...me, userId: "u-admin", name: "Admin", grants: [{ role: "admin", productId: null }] }
       : me;
   const store = {
-    tasks: tasks.map((t) => ({ ...t })),
+    tasks: tasks.map((t, i) => ({ ...t, state: publishable && i === 0 ? ("approved" as const) : t.state })),
+    accounts: socialAccounts.map((a) => ({ ...a })),
+    deliveries: [] as Delivery[],
+    attempts: new Map<string, DeliveryAttempt[]>(),
     kits: approvedKit ? [seedKit("insight", "approved")] : ([] as BrandKit[]),
     visuals: new Map<string, VisualAsset[]>(),
     imports: [] as ImportItem[],
@@ -475,5 +511,199 @@ export async function mockApi(
     const visual = (store.visuals.get(id!) ?? []).find((v) => v.id === visualId)!;
     Object.assign(visual, { status: "discarded", discardedBy: whoami.userId, discardedAt: stamp() });
     return json(route, 200, visual);
+  });
+
+  // Publishing: accounts, deliveries and the calendar, with the Worker's
+  // readiness rules and task moves (approved <-> scheduled <-> failed).
+  const delivered = (t: Task) => store.deliveries.filter((d) => d.taskId === t.id);
+  const liveOf = (t: Task) => delivered(t).filter((d) => ["draft", "scheduled", "sending", "handed_off"].includes(d.status));
+  const settle = (t: Task) => {
+    const all = delivered(t).filter((d) => d.status !== "cancelled");
+    if (t.state === "scheduled" && liveOf(t).length === 0 && !all.some((d) => d.status === "sent")) t.state = "approved";
+    if (t.state === "failed" && !all.some((d) => d.status === "failed")) t.state = "approved";
+  };
+  const readiness = (t: Task, account: SocialAccount | undefined, scheduledAt: string | null): PublishReadiness => {
+    const latest = detail(t).latestVersion;
+    const check = (ok: boolean, reason: string) => ({ ok, reason: ok ? "ok" : reason });
+    const horizon = new Date(now.getTime() + 90 * 24 * 3600_000);
+    const when = scheduledAt ? new Date(scheduledAt) : null;
+    const checks = {
+      state: check(PUBLISHABLE.includes(t.state), `La tâche est « ${t.state} », pas approuvée`),
+      approval: check(PUBLISHABLE.includes(t.state), "Aucune approbation valable pour cette version"),
+      account: check(
+        !!account && account.active && account.productId === t.productId && account.channel === latest?.channel,
+        account ? `Le compte vise ${account.channel}, la version vise ${latest?.channel ?? "aucun canal"}` : "Compte inconnu",
+      ),
+      permission: check(isWriter(), "Votre rôle ne publie pas"),
+      window: check(when === null || (when > now && when <= horizon), "Date hors fenêtre : entre maintenant et 90 jours"),
+    };
+    return { ready: Object.values(checks).every((c) => c.ok), checks };
+  };
+  // Seeded: the scheduled task of Précis has its delivery planned next week at 18:00.
+  if (store.deliveries.length === 0) {
+    const t = store.tasks[2]!;
+    store.deliveries.push({
+      id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      taskId: t.id,
+      socialAccountId: socialAccounts[1]!.id,
+      contentVersionId: `v-${t.id.slice(0, 8)}`,
+      approvalId: `a-${t.id.slice(0, 8)}`,
+      scheduledAt: new Date(nextWeek.getTime() + 3 * 3600_000).toISOString(),
+      status: "scheduled",
+      externalId: null,
+      permalink: null,
+      attempts: 0,
+      maxAttempts: 5,
+      lastError: null,
+      nextRetryAt: null,
+      sentAt: null,
+      version: 1,
+      createdBy: "u-operator",
+      createdAt: "2026-01-06T00:00:00.000Z",
+      updatedAt: "2026-01-06T00:00:00.000Z",
+      account: socialAccounts[1]!,
+    });
+  }
+
+  await page.route(/\/social-accounts(\?.*)?$/, (route) => {
+    if (route.request().method() === "POST") {
+      if (!whoami.grants.some((g) => g.role === "admin")) return json(route, 403, problem(403, "Admins only"));
+      const body = route.request().postDataJSON() as Omit<SocialAccount, "id" | "active" | "version" | "createdBy" | "createdAt" | "updatedAt">;
+      const existing = store.accounts.find((a) => a.productId === body.productId && a.provider === body.provider && a.externalRef === body.externalRef);
+      if (existing) return json(route, 409, problem(409, `Channel ${body.externalRef} is already mapped as ${existing.handle}`));
+      const a: SocialAccount = { ...body, id: uuid(), active: true, version: 1, createdBy: whoami.userId, createdAt: stamp(), updatedAt: stamp() };
+      store.accounts.push(a);
+      return json(route, 201, a);
+    }
+    const q = new URL(route.request().url()).searchParams;
+    return json(
+      route,
+      200,
+      store.accounts.filter((a) => (!q.get("productId") || a.productId === q.get("productId")) && (!q.get("channel") || a.channel === q.get("channel"))),
+    );
+  });
+  await page.route("**/social-accounts/provider-channels", (route) => json(route, 200, providerChannels));
+  await page.route(/\/social-accounts\/[0-9a-f-]{36}$/, (route) => {
+    const a = store.accounts.find((x) => x.id === route.request().url().split("/").pop());
+    if (!a) return json(route, 404, problem(404, "Unknown account"));
+    const body = route.request().postDataJSON() as { active?: boolean; handle?: string; displayName?: string; version: number };
+    if (body.version !== a.version) return json(route, 409, problem(409, "Version conflict"));
+    Object.assign(a, { active: body.active ?? a.active, handle: body.handle ?? a.handle, displayName: body.displayName ?? a.displayName, version: a.version + 1, updatedAt: stamp() });
+    return json(route, 200, a);
+  });
+
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/publish-readiness(\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    const t = find(url.pathname.split("/").at(-2));
+    if (!t) return json(route, 404, problem(404, "Not found"));
+    const account = store.accounts.find((a) => a.id === url.searchParams.get("socialAccountId"));
+    return json(route, 200, readiness(t, account, url.searchParams.get("scheduledAt")));
+  });
+  await page.route(/\/tasks\/[0-9a-f-]{36}\/deliveries$/, (route) => {
+    const t = find(route.request().url().split("/").at(-2));
+    if (!t) return json(route, 404, problem(404, "Not found"));
+    if (route.request().method() === "POST") {
+      if (!isWriter() || !PUBLISHABLE.includes(t.state)) return json(route, 403, problem(403, "Forbidden"));
+      const body = route.request().postDataJSON() as { socialAccountId: string; scheduledAt?: string | null };
+      const account = store.accounts.find((a) => a.id === body.socialAccountId);
+      const r = readiness(t, account, body.scheduledAt ?? null);
+      if (!r.ready || !account) return json(route, 422, problem(422, "Not ready to publish"));
+      const d: Delivery = {
+        id: uuid(),
+        taskId: t.id,
+        socialAccountId: account.id,
+        contentVersionId: detail(t).latestVersion?.id ?? "",
+        approvalId: `a-${t.id.slice(0, 8)}`,
+        scheduledAt: body.scheduledAt ?? null,
+        status: body.scheduledAt ? "scheduled" : "draft",
+        externalId: null,
+        permalink: null,
+        attempts: 0,
+        maxAttempts: 5,
+        lastError: null,
+        nextRetryAt: null,
+        sentAt: null,
+        version: 1,
+        createdBy: whoami.userId,
+        createdAt: stamp(),
+        updatedAt: stamp(),
+        account,
+      };
+      store.deliveries.push(d);
+      if (d.status === "scheduled") t.state = "scheduled";
+      return json(route, 201, d);
+    }
+    return json(route, 200, delivered(t));
+  });
+  await page.route(/\/deliveries\/[0-9a-f-]{36}\/(schedule|cancel|retry|permalink|attempts)$/, (route) => {
+    const [, id, action] = route.request().url().match(/\/deliveries\/([0-9a-f-]{36})\/(\w+)$/)!;
+    const d = store.deliveries.find((x) => x.id === id);
+    if (!d) return json(route, 404, problem(404, "Not found"));
+    if (action === "attempts") return json(route, 200, store.attempts.get(d.id) ?? []);
+    const t = find(d.taskId)!;
+    const body = route.request().postDataJSON() as { version: number; scheduledAt?: string; url?: string };
+    if (body.version !== d.version) return json(route, 409, problem(409, "Version conflict"));
+    if (action === "schedule") {
+      if (!["draft", "scheduled"].includes(d.status)) return json(route, 409, problem(409, `Delivery is ${d.status}`));
+      if (!readiness(t, d.account, body.scheduledAt!).ready) return json(route, 422, problem(422, "Not ready to publish"));
+      Object.assign(d, { scheduledAt: body.scheduledAt, status: "scheduled" });
+      t.state = "scheduled";
+    } else if (action === "cancel") {
+      if (["sending", "sent", "cancelled"].includes(d.status)) return json(route, 409, problem(409, `Delivery is ${d.status}`));
+      d.status = "cancelled";
+      settle(t);
+    } else if (action === "retry") {
+      if (d.status !== "failed") return json(route, 409, problem(409, `Delivery is ${d.status}`));
+      Object.assign(d, { status: "scheduled", maxAttempts: d.attempts + 3, nextRetryAt: null });
+      t.state = "scheduled";
+    } else {
+      if (!["sent", "handed_off"].includes(d.status)) return json(route, 409, problem(409, `Delivery is ${d.status}`));
+      if (!/^https:\/\/(www\.)?(linkedin\.com|x\.com|instagram\.com)\//.test(body.url ?? "")) return json(route, 422, problem(422, "Unexpected host"));
+      d.permalink = body.url!;
+    }
+    Object.assign(d, { version: d.version + 1, updatedAt: stamp() });
+    return json(route, 200, d);
+  });
+  await page.route(/\/calendar\?.*$/, (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    const from = new Date(q.get("from")!);
+    const to = new Date(q.get("to")!);
+    const productId = q.get("productId");
+    const inWindow = (iso: string) => new Date(iso) >= from && new Date(iso) < to;
+    const entries: CalendarEntry[] = store.deliveries
+      .filter((d) => d.scheduledAt && d.status !== "cancelled" && inWindow(d.scheduledAt) && (!productId || find(d.taskId)!.productId === productId))
+      .map((d) => {
+        const t = find(d.taskId)!;
+        return {
+          id: d.id,
+          taskId: t.id,
+          taskTitle: t.title,
+          productId: t.productId,
+          channel: d.account!.channel,
+          accountHandle: d.account!.handle,
+          scheduledAt: d.scheduledAt!,
+          status: d.status,
+          lastError: d.lastError,
+          permalink: d.permalink,
+        };
+      });
+    const dueTasks = store.tasks
+      .filter((t) => t.dueAt && inWindow(t.dueAt) && (!productId || t.productId === productId))
+      .map((t) => ({ id: t.id, title: t.title, productId: t.productId, state: t.state, dueAt: t.dueAt! }));
+    return json(route, 200, { from: from.toISOString(), to: to.toISOString(), deliveries: entries, dueTasks });
+  });
+
+  // Test hook: mark a delivery failed so the retry path can be exercised.
+  await page.route("**/__test/fail-delivery", (route) => {
+    const d = store.deliveries.find((x) => x.taskId === store.tasks[0]!.id);
+    if (d) {
+      Object.assign(d, { status: "failed", attempts: 2, lastError: "Provider refused the post", version: d.version + 1 });
+      store.attempts.set(d.id, [
+        { id: uuid(), deliveryId: d.id, n: 1, trigger: "cron", startedAt: stamp(), finishedAt: stamp(), outcome: "retryable_error", externalId: null, error: "timeout", retryAfterS: 60 },
+        { id: uuid(), deliveryId: d.id, n: 2, trigger: "retry", startedAt: stamp(), finishedAt: stamp(), outcome: "fatal_error", externalId: null, error: "Provider refused the post", retryAfterS: null },
+      ]);
+      store.tasks[0]!.state = "failed";
+    }
+    return json(route, 204, null);
   });
 }

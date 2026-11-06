@@ -13,6 +13,11 @@ describe("integration registry", () => {
     expect(await i.cms.listArticles({ limit: 10 })).toHaveLength(3);
   });
 
+  it("live publisher needs the BUFFER_API_KEY secret, and builds the Buffer adapter with it", () => {
+    expect(() => createIntegrations({ INTEGRATION_PUBLISHER_MODE: "live" })).toThrow(IntegrationNotAvailableError);
+    expect(createIntegrations({ INTEGRATION_PUBLISHER_MODE: "live", BUFFER_API_KEY: "k" }).publisher.name).toBe("buffer");
+  });
+
   it("refuses a live mode that has no adapter instead of falling back silently", () => {
     expect(() => createIntegrations({ INTEGRATION_PUBLISHER_MODE: "live" })).toThrow(
       IntegrationNotAvailableError,

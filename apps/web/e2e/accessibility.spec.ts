@@ -48,3 +48,24 @@ test("task page with a rendered visual has no serious accessibility violation", 
   await expect(section.getByRole("img")).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });
+
+test("task page with the publication form has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page, { publishable: true });
+  await page.goto(`/tasks/${tasks[0]!.id}`);
+  await expect(page.getByRole("list", { name: "Conditions de publication" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
+test("calendar page has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/calendar");
+  await expect(page.getByRole("list", { name: "Jours" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
+test("social accounts page has no serious accessibility violation", async ({ page }) => {
+  await mockApi(page, { admin: true });
+  await page.goto("/social-accounts");
+  await expect(page.getByRole("list", { name: "Comptes" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});

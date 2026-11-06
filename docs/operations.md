@@ -47,6 +47,8 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `VITE_API_URL` | build web | config | vide = même origine |
 | `VISUALS` | binding R2 (`wrangler.jsonc`) | config | bucket privé des logos et visuels ; requis quand `INTEGRATION_MEDIA_MODE=live` |
 | `APPFACTORY_RELEASE_TOKEN` | GitHub secret | secret | Release Please uniquement |
+| `BUFFER_API_KEY` | Worker secret (`wrangler secret put BUFFER_API_KEY`) | secret | requis quand `INTEGRATION_PUBLISHER_MODE=live` ; jamais journalisé |
+| `BUFFER_BASE_URL`, `BUFFER_ORGANIZATION_ID`, `PUBLISH_LEAD_MINUTES` | `wrangler.jsonc` | config | API Buffer, organisation (facultatif), avance de remise au fournisseur (10 min) ; cron `*/5 * * * *` déclenche l'outbox |
 | Clés des intégrations (CMS, publication, métriques, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
 
 Vérification avant chaque release : la recherche de `AUTH_SECRET=` ou `postgresql://` dans

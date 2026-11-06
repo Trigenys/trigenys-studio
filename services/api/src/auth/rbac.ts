@@ -48,6 +48,9 @@ export const policies = {
   "content.review": roleOf(["admin", "reviewer"], "Reviewing content"),
   // Publishing needs an operator *and* an approved item: approval is a state
   // of the resource, not a role, so a missing approval is a 403 as well.
+  "social.read": roleOf(["admin", "operator", "reviewer"], "Reading social accounts"),
+  "social.manage": roleOf(["admin"], "Managing social accounts"),
+  "delivery.dispatch": roleOf(["admin"], "Running the publishing outbox"),
   "content.publish": (p, r) => {
     const base = roleOf(["admin", "operator"], "Publishing content")(p, r);
     if (!base.allowed) return base;

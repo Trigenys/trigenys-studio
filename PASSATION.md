@@ -144,3 +144,18 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuves : API tsc + vitest 91/91, dry-run ok, openapi:check + contrats ok, web tsc + build ok, Playwright 68/68 (desktop + Pixel 7, axe inclus).
 - Leçon (même famille que LESSON « getByLabel sous-chaîne ») : « Sous-titre » matche `getByLabel("Titre")` → libellé renommé « Accroche (facultatif) ». Tout nouveau champ sur TaskPage doit éviter de contenir un libellé existant.
 - Suite : commit sur `feat/visuals-brand-kits`, PR « Closes #8 » avec RAIDER review, CI, merge squash sur « ok » du propriétaire, puis incrément suivant du backlog.
+
+## 2026-11-05 22:34 — Incrément 12 démarré : #9 calendrier, Buffer, comptes sociaux
+
+- PR #33 (#8 visuels) mergée en squash (`579f2eb`), branche distante supprimée. Branche de travail `feat/calendar-buffer` créée depuis `origin/main`.
+- Découverte : Buffer = API GraphQL bêta `https://api.buffer.com` (Bearer, `createPost{text, channelId, schedulingType: automatic, mode: customScheduled, dueAt}` → `PostActionSuccess|MutationError`, pas de clé d'idempotence, 429 + Retry-After, permalink non documenté) ; l'ancienne REST ferme le 2027-02-01.
+- Plan architecte retenu (copie complète : scratchpad de session `plan-inc12.md`) : outbox transactionnelle 3 phases (réserver `sending` → appel hors tx → enregistrer), tables `social_account` / `delivery` / `delivery_attempt` (migration 0007), adaptateur `integrations/buffer` derrière `Publisher` (`BUFFER_API_KEY` secret), moteur `src/publishing/{readiness,settle,dispatch}.ts`, cron Worker `*/5` + `POST /deliveries/dispatch`, routes comptes sociaux / livraisons / calendrier, web `/calendar`, section Publication sur la tâche, `/social-accounts` admin. Arbitrages pour l'ADR 0009 : canal strict (compte = canal de la version, zéro cross-post implicite) ; transition `scheduled→approved` quand toutes les livraisons sont annulées.
+- Ordre : A schéma → B intégrations → C moteur → D RBAC/routes/contrats → cron → E web/e2e → ADR/PR. Rien d'implémenté encore.
+
+## 2026-11-05 23:30 — Incrément 12 (#9) : calendrier, Buffer, comptes sociaux — prêt pour PR
+
+- Branche `feat/calendar-buffer`. API : migration `0007_publishing.sql` (social_account, delivery, delivery_attempt), port `Publisher` + adaptateurs `mock`/`buffer`, outbox `publishing/dispatch.ts` (claim tx → appel hors tx → record tx, bail, réconciliation `lookup`, repli exponentiel ≤ 60 min, 5 tentatives), readiness 5 vérifications, routes `social-accounts`/`deliveries`/`calendar`, cron `*/5`, RBAC `social.*`/`delivery.dispatch`, transition `scheduled→approved`.
+- Web : hooks `publishKeys`, `PublicationSection` sur la page tâche, `/calendar` (liste par jour, mois, filtre produit), `/social-accounts` (admin), liens tableau de bord. Mock e2e : option `publishable`, comptes et livraison seedés, routes publication, hook `/__test/fail-delivery`.
+- Preuves : API tsc 0, vitest 113/113, wrangler dry-run OK, openapi:check et contracts check à jour ; web tsc 0, vite build OK, Playwright 86/86 (desktop + Pixel 7) après ajout d'un Tab pour « Calendrier » dans le test clavier.
+- ADR 0009, `docs/operations.md` (BUFFER_API_KEY secret, vars Buffer/lead/cron). Reste : commit, push, PR « Closes #9 », CI, merge sur accord.
+- À confirmer en passage `live` : contrat bêta Buffer (`shareNow`, deletePost, permalien) ; pas d'idempotence côté Buffer (doute → `failed` « vérification manuelle »).

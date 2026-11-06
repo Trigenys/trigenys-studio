@@ -4,10 +4,12 @@ import { useMe } from "./api/queries";
 import { Shell } from "./components/Shell";
 import { ErrorState, Loading } from "./components/States";
 import { BrandKitsPage } from "./pages/BrandKits";
+import { CalendarPage } from "./pages/Calendar";
 import { DashboardPage } from "./pages/Dashboard";
 import { ImportsPage } from "./pages/Imports";
 import { LoginPage } from "./pages/Login";
 import { NewTaskPage } from "./pages/NewTask";
+import { SocialAccountsPage } from "./pages/SocialAccounts";
 import { TaskPage } from "./pages/TaskPage";
 
 const queryClient = new QueryClient({
@@ -30,6 +32,8 @@ function Authenticated() {
         <Route index element={<Navigate to="/today" replace />} />
         <Route path="imports" element={<ImportsPage me={me.data} />} />
         <Route path="brand-kits" element={<BrandKitsPage me={me.data} />} />
+        <Route path="calendar" element={<CalendarPage me={me.data} />} />
+        <Route path="social-accounts" element={<SocialAccountsPage me={me.data} />} />
         <Route path="tasks/new" element={<NewTaskPage me={me.data} />} />
         <Route path="tasks/:id" element={<TaskPage me={me.data} />} />
         <Route path=":view" element={<DashboardPage me={me.data} />} />

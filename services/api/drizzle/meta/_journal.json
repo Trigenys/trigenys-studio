@@ -50,6 +50,13 @@
       "when": 1793908402228,
       "tag": "0006_seed_visual_formats",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793914492731,
+      "tag": "0007_publishing",
+      "breakpoints": true
     }
   ]
 }
