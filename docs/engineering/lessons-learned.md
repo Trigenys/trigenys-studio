@@ -130,3 +130,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Dans un scénario qui mêle code à horloge injectée et routes à horloge réelle, ne jamais figer une date absolue : ancrer sur `new Date()` au chargement, ou injecter la même horloge partout. Revue : chercher `new Date("20` dans les tests et vérifier que le fichier n'appelle aucune route (`buffer-publisher`, `publishing`, `reporting` figent une date mais n'exercent que du code à horloge injectée).
 
 **Leçon généralisée** — Un test qui dépend de « maintenant » sans le contrôler partout passe par accident ; une date absolue dans un test doit être soit strictement sans contact avec l'horloge réelle, soit relative à elle.
+
+### LESSON-STUDIO-2026-009 — Un serveur e2e réutilisé peut donner un vert local sur une version périmée
+
+**Contexte** — Refonte visuelle (PR #40). La suite Playwright locale affichait 98 tests verts juste avant l'ouverture de la PR ; le job CI `web` échouait sur 18 tests d'accessibilité (contraste des pastilles `warn`/`success` en thème clair, `label-content-name-mismatch` sur le lien Alertes porteur d'un `aria-label` différent du texte visible).
+
+**Failure / near miss** — PR ouverte avec une preuve locale fausse. Relancée en local après coup, la même suite échouait (18 échecs) puis, une fois corrigée, comptait 116 tests, pas 98 : la première exécution avait tourné contre un serveur Vite déjà lancé sur le port 5190 (`reuseExistingServer` hors CI), sur un état de code différent, et le décompte montre qu'elle n'a pas exécuté tout le périmètre.
+
+**Cause racine** — `reuseExistingServer: !process.env.CI` fait confiance à n'importe quel processus déjà présent sur le port e2e ; rien ne vérifie qu'il sert le code courant. Les messages axe n'indiquaient pas les couleurs mesurées, ce qui rendait le diagnostic plus lent.
+
+**Résolution** — Tokens `--warn` et `--success` du thème clair assombris (ratio ≥ 5,4:1 sur fond teinté), `aria-label` remplacé par un suffixe `visually-hidden` (nom accessible qui contient le texte visible), helper `violations()` enrichi du couple fg/bg et du ratio mesuré.
+
+**Prévention** — Avant une preuve e2e destinée à une PR : vérifier qu'aucun serveur n'occupe le port e2e (`netstat -ano | grep 5190`) ou lancer avec `CI=1` pour forcer un serveur neuf ; comparer le nombre total de tests exécutés au nombre attendu (116 aujourd'hui) et traiter un écart comme un échec. Revue : un `aria-label` sur un élément porteur de texte visible doit commencer par ce texte.
+
+**Leçon généralisée** — Un vert obtenu contre un serveur dont on ne contrôle pas la version n'est pas une preuve ; la preuve inclut le périmètre exécuté (nombre de tests) et l'état servi.

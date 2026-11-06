@@ -250,3 +250,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #40 (`feat/web-visual-redesign`, commit 1cadbcc) : refonte visuelle complète, preuves dans la PR (build, 98 e2e Playwright, captures). CI verte (contracts, visual-qa, impact, sync-project).
 - En attente du go utilisateur pour fusion (`gh pr merge 40 --repo Trigenys/trigenys-studio --squash --delete-branch`).
 - Serveurs locaux toujours lancés : Worker 8787, web 5175, Docker `trigenys-studio-pg`.
+
+## 2026-11-06 14:50 — PR #40 : correctif accessibilité après CI rouge
+
+- Le job `web` de la CI échouait (18 tests axe) : contraste des pastilles `warn`/`success` en clair et `aria-label` du lien Alertes différent du texte visible. Le vert local précédent venait d'un serveur Vite réutilisé sur le port 5190 (LESSON-STUDIO-2026-009).
+- Correctifs : tokens `--warn` #854d0e / `--success` #166534 (clair), suffixe `visually-hidden` « à traiter » à la place de l'`aria-label`, helper axe qui affiche fg/bg/ratio. Suite complète : 116 tests verts, build vert.
+- Prochaine étape : CI verte sur le nouveau commit, puis go utilisateur pour fusion en squash.

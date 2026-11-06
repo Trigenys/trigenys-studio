@@ -37,9 +37,14 @@ export function Shell({ me, children }: { me: Me; children: React.ReactNode }) {
           <NavLink to="/reports" className="nav-link">
             Rapports
           </NavLink>
-          <NavLink to="/alerts" className="nav-link" aria-label={`Alertes, ${openAlerts} à traiter`}>
+          <NavLink to="/alerts" className="nav-link">
             Alertes
-            {openAlerts ? <span className="count">{openAlerts}</span> : null}
+            {openAlerts ? (
+              <>
+                <span className="count">{openAlerts}</span>
+                <span className="visually-hidden"> à traiter</span>
+              </>
+            ) : null}
           </NavLink>
           {admin ? (
             <>
