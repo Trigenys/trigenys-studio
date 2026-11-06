@@ -36,7 +36,10 @@ let reviewerId: string;
 let insightAccount: string;
 let atelierAccount: string;
 
-const now = new Date("2026-11-06T12:00:00Z");
+// Anchored to the real clock: the routes reconcile with `new Date()` and queue
+// e-mails due at that instant, so a frozen clock behind the real one would
+// never see them as due once the real time passes it.
+const now = new Date();
 const hoursAgo = (hrs: number) => new Date(now.getTime() - hrs * 3_600_000);
 const hoursAhead = (hrs: number) => new Date(now.getTime() + hrs * 3_600_000);
 const json = { "content-type": "application/json" };
@@ -49,7 +52,7 @@ const patch = (path: string, body: unknown, token: string) =>
 
 const reconcile = (options: Partial<Parameters<typeof reconcileAlerts>[0]> = {}) => reconcileAlerts({ db: h.db, now, ...options });
 const notify = (options: Partial<Parameters<typeof dispatchNotifications>[0]> = {}) =>
-  dispatchNotifications({ db: h.db, mailer: h.mailer, now: () => now, webAppUrl: "https://studio.example/", ...options });
+  dispatchNotifications({ db: h.db, mailer: h.mailer, now: () => new Date(), webAppUrl: "https://studio.example/", ...options });
 
 const mk = async (row: Partial<typeof task.$inferInsert> & { title: string }) =>
   (await h.db.insert(task).values({ productId: "insight", type: "post", ...row }).returning())[0]!;

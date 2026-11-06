@@ -116,3 +116,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Tests qui couvrent chaque règle avec des données qui la déclenchent réellement (ici une transition datée et des commentaires), pas seulement le cas « rien à signaler ».
 
 **Leçon généralisée** — Un fragment SQL corrélé doit qualifier ses colonnes explicitement ; un résultat vide sans erreur est un signal de comparaison dégénérée.
+
+### LESSON-STUDIO-2026-008 — Une horloge de test figée derrière l'horloge réelle est une bombe à retardement
+
+**Contexte** — `test/alerts.test.ts` figeait `now` à `2026-11-06T12:00:00Z` et le passait au réconciliateur et à l'outbox de notifications, tandis que les routes HTTP du même test réconcilient avec `new Date()` et mettent en file des e-mails dus « maintenant » (`next_retry_at`).
+
+**Failure / near miss** — CI verte le matin du 6 novembre, rouge l'après-midi sur une PR de documentation : la dispatch créée par la route portait un `next_retry_at` réel postérieur à l'horloge figée, l'outbox ne la réclamait plus, le compte `skipped` attendu (1) devenait 0.
+
+**Cause racine** — Deux horloges dans un même scénario : l'une injectée et figée, l'autre réelle et non injectable (routes). Le test ne tenait qu'à la condition implicite « horloge réelle ≤ horloge figée », vraie seulement avant l'instant choisi.
+
+**Résolution** — Ancre du test sur l'horloge réelle au chargement du module (`const now = new Date()`), outbox appelée avec `() => new Date()` ; les fixtures restent relatives (`hoursAgo`, `hoursAhead`). Classification : défaut de test, pas de produit.
+
+**Prévention** — Dans un scénario qui mêle code à horloge injectée et routes à horloge réelle, ne jamais figer une date absolue : ancrer sur `new Date()` au chargement, ou injecter la même horloge partout. Revue : chercher `new Date("20` dans les tests et vérifier que le fichier n'appelle aucune route (`buffer-publisher`, `publishing`, `reporting` figent une date mais n'exercent que du code à horloge injectée).
+
+**Leçon généralisée** — Un test qui dépend de « maintenant » sans le contrôler partout passe par accident ; une date absolue dans un test doit être soit strictement sans contact avec l'horloge réelle, soit relative à elle.
