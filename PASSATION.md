@@ -281,3 +281,16 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #41 fusionnée en squash sur main (0677cbf), branche feat/web-brand-palette supprimée. Local sur main à jour.
 - Le web utilise désormais la palette du design system V4 (Drive) ; le bleu générique a disparu.
 - Prochaine étape : attendre la prochaine consigne de l'utilisateur (pistes possibles : logo officiel SVG du pack V4 à la place du « T » du favicon, polices Urbanist / Plus Jakarta Sans du brand book à la place de Geist).
+
+## 2026-11-07 04:11 — Serveur MCP (PR #42)
+
+- Branche `feat/api-mcp-server`, PR #42 ouverte sur `main`, en attente de l'accord de merge (squash).
+- `POST /mcp` : Streamable HTTP sans état (`@hono/mcp` 0.3.5 + SDK 1.32.2), 13 outils déclarés dans `services/api/src/mcp/tools.ts`, rejoués via `app.fetch` avec les en-têtes de l'appelant (parité RBAC/audit/idempotence). Hors contrat OpenAPI (`app.all`). ADR 0012.
+- Preuves : typecheck 0, build dry-run OK, openapi:check identique à `main` (CRLF local seulement), `test/mcp.test.ts` 11/11 (dont client officiel du SDK).
+- Point d'attention : la suite complète `npm test -w services/api` échoue localement par timeouts `beforeAll` PGlite sous charge parallèle, à l'identique sur `main` (préexistant). Piste : `hookTimeout` ou `fileParallelism` dans `vitest.config.ts`.
+
+## 2026-11-07 04:20 — Fusion de la PR #42
+
+- PR #42 (serveur MCP) fusionnée en squash sur `main` (83c60f1), branche supprimée. CI verte (api, contracts, web).
+- Plan SEO reçu de la session expert-seo-geo : non applicable ici (insight.trigenys.com absent de ce dépôt), renvoyé à cette session.
+- Prochaine étape : aucune en cours ; piste ouverte = fiabiliser la suite API locale (timeouts PGlite en parallèle, préexistants).
