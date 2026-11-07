@@ -68,6 +68,8 @@ Autorisation : rôles `admin`, `operator`, `reviewer` (`role_assignment`, évent
 
 Pipeline de contenu : `product`, `task` (machine d'états déclarée dans `services/api/src/pipeline/definition.ts`, moteur générique dans `engine.ts`), `content_version`, `comment`, `approval` et `task_transition`. Chaque transition porte son action RBAC et un garde éventuel ; `approved` n'est atteignable que par une décision (`POST /tasks/{id}/approvals`, quatre yeux : l'auteur de la dernière version ne décide pas) liée au `content_hash` et à l'`asset_set_hash` de la version approuvée, invalidée dès qu'une nouvelle version arrive. Les `PATCH` exigent `version` (concurrence optimiste, 409 si périmé) ; les `POST` acceptent un en-tête `Idempotency-Key` (rejeu de la réponse pour une requête identique, 422 si la clé est réutilisée avec un autre contenu).
 
+MCP : `POST /mcp` (Streamable HTTP sans état, réponses JSON) expose treize outils qui rejouent les routes REST en processus avec les droits de l'appelant (bearer ou cookie, mêmes 401/403, même audit, `Idempotency-Key` via l'argument `idempotencyKey`). La table des outils est dans `services/api/src/mcp/tools.ts` ; le point d'entrée n'apparaît pas dans `openapi.json` (ADR 0012).
+
 Migrations : `npm run db:generate -w services/api` après un changement de `src/db/schema.ts`, `npm run db:migrate -w services/api` avec `DATABASE_URL`. Les tests rejouent les migrations sur PGlite (Postgres en mémoire), sans base externe.
 
 ## CI / automatisation

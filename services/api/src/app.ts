@@ -1,4 +1,5 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
+import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { AuthConfigError, authConfigFromEnv, createAuth, type AuthConfig } from "./auth/auth.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
@@ -21,6 +22,7 @@ import { objectiveRoutes } from "./routes/objectives.ts";
 import { reportRoutes } from "./routes/reports.ts";
 import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
+import { MCP_PATH, mcpHandler, mcpOriginGuard, mcpRequireSession } from "./mcp/route.ts";
 import { VERSION } from "./version.ts";
 
 export const openApiInfo = {
@@ -112,7 +114,7 @@ export function createApp(deps: AppDeps = {}) {
         }
       },
       credentials: true,
-      allowHeaders: ["content-type", "authorization", "idempotency-key"],
+      allowHeaders: ["content-type", "authorization", "idempotency-key", "mcp-protocol-version", "mcp-session-id"],
       exposeHeaders: ["set-auth-token"],
     }),
   );
@@ -133,6 +135,12 @@ export function createApp(deps: AppDeps = {}) {
   app.route("/", reportRoutes);
   app.route("/", objectiveRoutes);
   app.route("/", alertRoutes);
+
+  // Agent surface: every tool replays a REST route above with the caller's
+  // credentials, so policies and audit trail are identical. Mounted with
+  // app.all on purpose: a JSON-RPC endpoint is not part of the OpenAPI contract.
+  const trustedOrigins = (c: Context<AppEnv>) => (deps.authConfig ?? authConfigFromEnv(c.env)).trustedOrigins;
+  app.all(MCP_PATH, mcpRequireSession, mcpOriginGuard(trustedOrigins), mcpHandler(app));
 
   return app;
 }
