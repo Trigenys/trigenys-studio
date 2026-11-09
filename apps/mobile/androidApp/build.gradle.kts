@@ -23,7 +23,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "0.1.0" // x-release-please-version
+        versionName = "0.2.0" // x-release-please-version
         buildConfigField("String", "API_URL", "\"$studioApiUrl\"")
         manifestPlaceholders["apiHost"] = apiHost
     }
