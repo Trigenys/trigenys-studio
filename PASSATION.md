@@ -302,3 +302,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuves locales : tsc API/web, lint, 168 tests (séquentiel), openapi/contracts à jour, dry-run wrangler, build web.
 - Mise en service (après déploiement) : Studio `INTEGRATION_EMAIL_MODE=live`, `NOTIFY_EMAIL_BASE_URL`, secret `NOTIFY_EMAIL_INGEST_KEY` ; Notify `EMAIL_TRIGENYS_STUDIO_INGEST_KEY` + entrée `EMAIL_PROJECTS_JSON` ; rôle operator pour la prestataire sur ses produits.
 - Suites : route WhatsApp générique côté trigenys-notify (session à part) ; OAuth 2.1 MCP pour les connecteurs distants ChatGPT / claude.ai ; verrous de déploiement inchangés (appfactory#185, compte Cloudflare, APPFACTORY_RELEASE_TOKEN).
+
+## 2026-11-09 08:42 — Fusion de la PR #43
+
+- PR #43 (assignation notifiée via Trigenys Notify) fusionnée en squash sur `main` (8510ca6), branche supprimée. CI verte après relance de mobile-ios (504 réseau sur setup-java, sans lien avec le code).
+- Session liée en cours : route WhatsApp générique dans `Trigenys/trigenys-notify` (local_91df471b). Ensuite, ajouter le canal WhatsApp côté Studio dans une PR séparée.
+- Verrous de déploiement inchangés : appfactory#185, compte Cloudflare, APPFACTORY_RELEASE_TOKEN. Suite possible : OAuth 2.1 sur le serveur MCP pour les connecteurs ChatGPT / claude.ai.
