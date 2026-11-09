@@ -309,6 +309,37 @@
           "name"
         ]
       },
+      "Assignee": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "operator",
+                "reviewer"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "roles"
+        ]
+      },
       "UpdateProduct": {
         "type": "object",
         "properties": {
@@ -3642,6 +3673,78 @@
         }
       }
     },
+    "/products/{id}/assignees": {
+      "get": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "People a task of this product can be assigned to (role on the product or global)",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assignable users, by name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Assignee"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to edit this product's content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown product",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/products/{id}": {
       "patch": {
         "tags": [
@@ -3919,7 +4022,7 @@
             }
           },
           "422": {
-            "description": "Idempotency-Key reused for a different request",
+            "description": "Idempotency-Key reused for a different request, or assignee without access to the product",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4086,6 +4189,16 @@
           },
           "409": {
             "description": "Stale version",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Assignee without access to the task's product",
             "content": {
               "application/problem+json": {
                 "schema": {

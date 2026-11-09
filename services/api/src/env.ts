@@ -58,6 +58,12 @@ export type Bindings = {
   ALERT_STALL_HOURS?: string;
   ALERT_DUE_SOON_HOURS?: string;
   WEB_APP_URL?: string;
+  // Live e-mail (INTEGRATION_EMAIL_MODE=live): Trigenys Notify generic e-mail
+  // route (ADR 0013). NOTIFY_EMAIL_INGEST_KEY is a Worker secret scoped to this
+  // product; NOTIFY_PROJECT defaults to "trigenys-studio".
+  NOTIFY_EMAIL_BASE_URL?: string;
+  NOTIFY_EMAIL_INGEST_KEY?: string;
+  NOTIFY_PROJECT?: string;
 };
 
 export type Variables = {

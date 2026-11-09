@@ -1,12 +1,13 @@
 import { and, asc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { recordAudit } from "../auth/audit.ts";
 import type { Db, Tx } from "../db/client.ts";
-import { alert, notificationDispatch, task, user, type AlertKind, type AlertPriority } from "../db/schema.ts";
-import type { Mailer } from "../integrations/types.ts";
+import { alert, notificationDispatch, product, task, user, type AlertKind, type AlertPriority } from "../db/schema.ts";
+import type { Mail, Mailer } from "../integrations/types.ts";
 import { backoffSeconds } from "../publishing/dispatch.ts";
 import { PRIORITY_LABELS } from "./rules.ts";
 
-// At-most-once e-mail outbox for alerts (ADR 0011), in the three phases of
+// At-most-once e-mail outbox for alerts (ADR 0011) and task assignments
+// (ADR 0013), in the three phases of
 // the publishing outbox: claim under a row lock with a lease, send with no
 // transaction open, record. A row found `sending` past its lease may have
 // reached the provider: it is failed as uncertain and never sent again.
@@ -29,6 +30,7 @@ type DispatchRow = typeof notificationDispatch.$inferSelect;
 type Claimed = {
   row: DispatchRow;
   to: string;
+  template: Mail["template"];
   subject: string;
   text: string;
 };
@@ -41,7 +43,7 @@ const audit = (tx: Tx, row: DispatchRow, result: string, extra: Record<string, u
     action: "notification.send",
     resource: { type: "notification", id: row.id },
     outcome: "allowed",
-    details: { dispatchId: row.id, alertId: row.alertId, userId: row.userId, attempt: row.attempts, result, ...extra },
+    details: { dispatchId: row.id, kind: row.kind, alertId: row.alertId, taskId: row.taskId, userId: row.userId, attempt: row.attempts, result, ...extra },
   });
 
 export async function dispatchNotifications(options: NotifyOptions): Promise<NotifyReport> {
@@ -71,7 +73,7 @@ export async function dispatchNotifications(options: NotifyOptions): Promise<Not
 
     let error: string | null = null;
     try {
-      await mailer.send({ to: claimed.to, template: "alert", subject: claimed.subject, text: claimed.text });
+      await mailer.send({ to: claimed.to, template: claimed.template, subject: claimed.subject, text: claimed.text, key: `${claimed.row.id}:${claimed.row.attempts}` });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -103,13 +105,8 @@ async function claim(tx: Tx, id: string, now: Date, leaseMs: number, webAppUrl: 
     return null;
   };
 
-  const [a] = await tx
-    .select({ kind: alert.kind, priority: alert.priority, state: alert.state, title: alert.title, detail: alert.detail, taskId: alert.taskId, taskTitle: task.title })
-    .from(alert)
-    .innerJoin(task, eq(task.id, alert.taskId))
-    .where(eq(alert.id, row.alertId));
-  if (!a) return skip("L'alerte n'existe plus.", "skipped");
-  if (a.state !== "open") return skip(`L'alerte a été ${a.state === "resolved" ? "résolue" : "acquittée"} avant l'envoi.`, "skipped");
+  const message = row.kind === "task_assigned" ? await assignmentMessage(tx, row) : await alertMessage(tx, row);
+  if ("skip" in message) return skip(message.skip, "skipped");
   if (!webAppUrl) return skip("WEB_APP_URL n'est pas configurée : définir la var du Worker pour envoyer les liens.", "skipped");
   const [u] = await tx.select({ email: user.email }).from(user).where(eq(user.id, row.userId));
   if (!u?.email) return skip("Le destinataire n'a pas d'adresse e-mail.", "skipped");
@@ -119,12 +116,53 @@ async function claim(tx: Tx, id: string, now: Date, leaseMs: number, webAppUrl: 
     .update(notificationDispatch)
     .set({ status: "sending", attempts, claimedUntil: new Date(now.getTime() + leaseMs), nextRetryAt: null })
     .where(eq(notificationDispatch.id, id));
-  const link = `${webAppUrl.replace(/\/+$/, "")}${alertPath(a.kind as AlertKind, a.taskId)}`;
+  const link = `${webAppUrl.replace(/\/+$/, "")}${message.path}`;
   return {
     row: { ...row, attempts },
     to: u.email,
+    template: message.template,
+    subject: message.subject,
+    text: `${message.body}\n\nÀ traiter dans le Studio : ${link}`,
+  };
+}
+
+type Message = { template: Mail["template"]; subject: string; body: string; path: string } | { skip: string };
+
+async function alertMessage(tx: Tx, row: DispatchRow): Promise<Message> {
+  if (!row.alertId) return { skip: "La notification ne référence aucune alerte." };
+  const [a] = await tx
+    .select({ kind: alert.kind, priority: alert.priority, state: alert.state, title: alert.title, detail: alert.detail, taskId: alert.taskId })
+    .from(alert)
+    .where(eq(alert.id, row.alertId));
+  if (!a) return { skip: "L'alerte n'existe plus." };
+  if (a.state !== "open") return { skip: `L'alerte a été ${a.state === "resolved" ? "résolue" : "acquittée"} avant l'envoi.` };
+  return {
+    template: "alert",
     subject: `[Studio] ${PRIORITY_LABELS[a.priority as AlertPriority]} · ${a.title}`,
-    text: `${a.title}\n\n${a.detail}\n\nÀ traiter dans le Studio : ${link}`,
+    body: `${a.title}\n\n${a.detail}`,
+    path: alertPath(a.kind as AlertKind, a.taskId),
+  };
+}
+
+// The notice describes the task as it is when it is sent, and only while it
+// is still assigned to the recipient: a reassignment cancels it.
+async function assignmentMessage(tx: Tx, row: DispatchRow): Promise<Message> {
+  if (!row.taskId) return { skip: "La notification ne référence aucune tâche." };
+  const [t] = await tx
+    .select({ title: task.title, product: product.name, assigneeId: task.assigneeId, dueAt: task.dueAt, brief: task.brief })
+    .from(task)
+    .innerJoin(product, eq(product.id, task.productId))
+    .where(eq(task.id, row.taskId));
+  if (!t) return { skip: "La tâche n'existe plus." };
+  if (t.assigneeId !== row.userId) return { skip: "La tâche a été réassignée avant l'envoi." };
+  const due = t.dueAt ? `\nÉchéance : ${t.dueAt.toISOString().slice(0, 10)}` : "";
+  const brief = t.brief.trim();
+  const excerpt = brief ? `\n\n${brief.length > 600 ? `${brief.slice(0, 600)}…` : brief}` : "";
+  return {
+    template: "task-assigned",
+    subject: `[Studio] Nouvelle tâche · ${t.title}`,
+    body: `Une tâche vous a été assignée : ${t.title}\nProduit : ${t.product}${due}${excerpt}`,
+    path: `/tasks/${row.taskId}`,
   };
 }
 

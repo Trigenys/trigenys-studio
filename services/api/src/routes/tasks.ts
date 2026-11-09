@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, asc, desc, eq, inArray, lte, type SQL } from "drizzle-orm";
+import { assertAssignable, queueAssignmentNotice } from "../alerts/assignment.ts";
 import { reconcileTaskAlerts } from "../alerts/reconcile.ts";
 import { audited, recordAudit } from "../auth/audit.ts";
 import { authorize, requireSession } from "../auth/middleware.ts";
@@ -309,7 +310,7 @@ const createTask = createRoute({
     401: problemResponse("No valid session"),
     403: problemResponse("Not allowed on this product"),
     404: problemResponse("Unknown product"),
-    422: problemResponse("Idempotency-Key reused for a different request"),
+    422: problemResponse("Idempotency-Key reused for a different request, or assignee without access to the product"),
   },
 });
 
@@ -344,6 +345,7 @@ const updateTask = createRoute({
     403: problemResponse("Not allowed on this product"),
     404: problemResponse("Unknown task"),
     409: problemResponse("Stale version"),
+    422: problemResponse("Assignee without access to the task's product"),
   },
 });
 
@@ -525,18 +527,26 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
           requestId: c.var.requestId,
           details: { title: body.title, type: body.type },
         },
-        async (tx) =>
-          (
-            await tx
-              .insert(task)
-              .values({
-                ...body,
-                dueAt: body.dueAt ? new Date(body.dueAt) : null,
-                state: pipelineDefinition.initial,
-                createdBy: principal.userId,
-              })
-              .returning()
-          )[0]!,
+        async (tx) => {
+          if (body.assigneeId) await assertAssignable(tx, body.productId, body.assigneeId);
+          const [row] = await tx
+            .insert(task)
+            .values({
+              ...body,
+              dueAt: body.dueAt ? new Date(body.dueAt) : null,
+              state: pipelineDefinition.initial,
+              createdBy: principal.userId,
+            })
+            .returning();
+          await queueAssignmentNotice(tx, {
+            taskId: row!.id,
+            version: row!.version,
+            assigneeId: row!.assigneeId,
+            previousAssigneeId: null,
+            actorId: principal.userId,
+          });
+          return row!;
+        },
       );
       const s = await snapshotOr404(db, created.id);
       return { status: 201 as const, body: await detail(s, principal) };
@@ -564,6 +574,9 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
         details: { fields: Object.keys(patch) },
       },
       async (tx) => {
+        const [before] = await tx.select({ productId: task.productId, assigneeId: task.assigneeId }).from(task).where(eq(task.id, id));
+        if (!before) throw new ProblemError(404, "Unknown task", { detail: `No task "${id}"` });
+        if (patch.assigneeId) await assertAssignable(tx, before.productId, patch.assigneeId);
         const [row] = await tx
           .update(task)
           .set({
@@ -575,6 +588,15 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
           .where(and(eq(task.id, id), eq(task.version, version)))
           .returning();
         if (!row) throw new ProblemError(409, "Stale version", { detail: "Reload the task and apply the change again" });
+        if (patch.assigneeId !== undefined) {
+          await queueAssignmentNotice(tx, {
+            taskId: row.id,
+            version: row.version,
+            assigneeId: row.assigneeId,
+            previousAssigneeId: before.assigneeId,
+            actorId: principal.userId,
+          });
+        }
         return row;
       },
     );

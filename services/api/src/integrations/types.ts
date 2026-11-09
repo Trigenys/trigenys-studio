@@ -121,9 +121,11 @@ export interface Llm {
 
 export type Mail = {
   to: string;
-  template: "magic-link" | "alert";
+  template: "magic-link" | "alert" | "task-assigned";
   subject: string;
   text: string;
+  // Stable identity of this send attempt, for providers that deduplicate.
+  key?: string;
 };
 
 export interface Mailer {

@@ -13,7 +13,7 @@ import {
 // idempotency are enforced by the route the tool maps to.
 
 export type RouteCall = {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PATCH";
   path: string;
   query?: Record<string, string | number | undefined>;
   body?: unknown;
@@ -110,6 +110,43 @@ export const TOOLS: ReadonlyArray<ToolSpec> = [
     },
     annotations: READ,
     toRequest: (a) => ({ method: "GET", path: "/tasks", query: a }),
+  }),
+  define({
+    name: "list_assignees",
+    description:
+      "Personnes à qui confier une tâche de ce produit (rôle sur le produit ou global) : id à passer en assigneeId.",
+    input: { productId: z.string().min(1) },
+    annotations: READ,
+    toRequest: ({ productId }) => ({ method: "GET", path: `/products/${encodeURIComponent(productId)}/assignees` }),
+  }),
+  define({
+    name: "create_task",
+    description:
+      "Crée une tâche de production (brief libre) et peut la confier directement à quelqu'un : la personne assignée reçoit une notification. Requiert content.write.",
+    input: {
+      productId: z.string().min(1),
+      type: z.string().min(1).max(40).describe("post, article, visuel, newsletter…"),
+      title: z.string().min(1).max(200),
+      brief: z.string().max(20_000).optional(),
+      priority: z.number().int().min(0).max(3).optional().describe("0 = normale … 3 = urgente"),
+      dueAt: iso.nullable().optional(),
+      assigneeId: z.string().nullable().optional().describe("id issu de list_assignees"),
+      idempotencyKey,
+    },
+    annotations: WRITE,
+    toRequest: ({ idempotencyKey: key, ...body }) => ({ method: "POST", path: "/tasks", body, idempotencyKey: key }),
+  }),
+  define({
+    name: "assign_task",
+    description:
+      "Confie une tâche existante à quelqu'un (ou la désassigne avec null) ; la nouvelle personne est notifiée. version = celle lue par get_task : un conflit 409 signifie que la tâche a changé entre-temps.",
+    input: {
+      taskId: z.string().min(1),
+      assigneeId: z.string().nullable().describe("id issu de list_assignees, null pour désassigner"),
+      version: z.number().int().min(1),
+    },
+    annotations: WRITE_IDEMPOTENT,
+    toRequest: ({ taskId, ...body }) => ({ method: "PATCH", path: `/tasks/${encodeURIComponent(taskId)}`, body }),
   }),
   define({
     name: "get_task",
