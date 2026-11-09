@@ -1,6 +1,6 @@
 import type { Me, Task } from "@trigenys/studio-contracts";
 
-export type ViewId = "today" | "review" | "scheduled" | "late";
+export type ViewId = "today" | "mine" | "review" | "scheduled" | "late";
 
 export type View = {
   id: ViewId;
@@ -29,6 +29,12 @@ export const VIEWS: View[] = [
     matches: (t, { now, userId }) =>
       active(t) &&
       ((t.dueAt !== null && new Date(t.dueAt) < endOfDay(now)) || (t.dueAt === null && t.assigneeId === userId)),
+  },
+  {
+    id: "mine",
+    label: "Mes tâches",
+    empty: "Aucune tâche ne vous est assignée.",
+    matches: (t, { userId }) => active(t) && t.assigneeId === userId,
   },
   {
     id: "review",

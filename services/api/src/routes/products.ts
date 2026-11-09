@@ -1,8 +1,8 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
+import { eq, isNull, or } from "drizzle-orm";
 import { audited } from "../auth/audit.ts";
 import { authorize } from "../auth/middleware.ts";
-import { product } from "../db/schema.ts";
+import { product, ROLES, roleAssignment, user } from "../db/schema.ts";
 import type { AppEnv } from "../env.ts";
 import { ProblemError, ProblemSchema } from "../problem.ts";
 
@@ -87,6 +87,31 @@ const updateRoute = createRoute({
   },
 });
 
+export const AssigneeSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    roles: z.array(z.enum(ROLES)),
+  })
+  .openapi("Assignee");
+
+const assigneesRoute = createRoute({
+  method: "get",
+  path: "/products/{id}/assignees",
+  tags: ["pipeline"],
+  summary: "People a task of this product can be assigned to (role on the product or global)",
+  security,
+  middleware: [authorize("content.write", (c) => ({ type: "product", id: c.req.param("id"), productId: c.req.param("id") }))] as const,
+  request: { params: z.object({ id: z.string().min(1) }) },
+  responses: {
+    200: { description: "Assignable users, by name", content: { "application/json": { schema: z.array(AssigneeSchema) } } },
+    401: problemResponse("No valid session"),
+    403: problemResponse("Not allowed to edit this product's content"),
+    404: problemResponse("Unknown product"),
+  },
+});
+
 const serialise = (row: typeof product.$inferSelect) => ({ ...row, createdAt: row.createdAt.toISOString() });
 
 export const productRoutes = new OpenAPIHono<AppEnv>()
@@ -113,6 +138,24 @@ export const productRoutes = new OpenAPIHono<AppEnv>()
       async (tx) => (await tx.insert(product).values(body).returning())[0]!,
     );
     return c.json(serialise(created), 201);
+  })
+  .openapi(assigneesRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const [existing] = await c.var.db.select({ id: product.id }).from(product).where(eq(product.id, id));
+    if (!existing) throw new ProblemError(404, "Unknown product");
+    const rows = await c.var.db
+      .select({ id: user.id, name: user.name, email: user.email, role: roleAssignment.role })
+      .from(roleAssignment)
+      .innerJoin(user, eq(user.id, roleAssignment.userId))
+      .where(or(eq(roleAssignment.productId, id), isNull(roleAssignment.productId)))
+      .orderBy(user.name, roleAssignment.role);
+    const byUser = new Map<string, { id: string; name: string; email: string; roles: (typeof ROLES)[number][] }>();
+    for (const row of rows) {
+      const entry = byUser.get(row.id) ?? { id: row.id, name: row.name, email: row.email, roles: [] };
+      if (!entry.roles.includes(row.role)) entry.roles.push(row.role);
+      byUser.set(row.id, entry);
+    }
+    return c.json([...byUser.values()], 200);
   })
   .openapi(updateRoute, async (c) => {
     const { id } = c.req.valid("param");

@@ -294,3 +294,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #42 (serveur MCP) fusionnée en squash sur `main` (83c60f1), branche supprimée. CI verte (api, contracts, web).
 - Plan SEO reçu de la session expert-seo-geo : non applicable ici (insight.trigenys.com absent de ce dépôt), renvoyé à cette session.
 - Prochaine étape : aucune en cours ; piste ouverte = fiabiliser la suite API locale (timeouts PGlite en parallèle, préexistants).
+
+## 2026-11-09 08:31 — Assignation de tâches notifiée (PR #43)
+
+- Branche `feat/assignation-notify`, PR #43 ouverte (CI en cours), non fusionnée : attend l'accord du commanditaire.
+- Contenu : `GET /products/{id}/assignees`, notification `task_assigned` via l'outbox, `NotifyMailer` (route e-mail générique Trigenys Notify), outils MCP `list_assignees` / `create_task` / `assign_task`, vue web « Mes tâches », ADR 0013.
+- Preuves locales : tsc API/web, lint, 168 tests (séquentiel), openapi/contracts à jour, dry-run wrangler, build web.
+- Mise en service (après déploiement) : Studio `INTEGRATION_EMAIL_MODE=live`, `NOTIFY_EMAIL_BASE_URL`, secret `NOTIFY_EMAIL_INGEST_KEY` ; Notify `EMAIL_TRIGENYS_STUDIO_INGEST_KEY` + entrée `EMAIL_PROJECTS_JSON` ; rôle operator pour la prestataire sur ses produits.
+- Suites : route WhatsApp générique côté trigenys-notify (session à part) ; OAuth 2.1 MCP pour les connecteurs distants ChatGPT / claude.ai ; verrous de déploiement inchangés (appfactory#185, compte Cloudflare, APPFACTORY_RELEASE_TOKEN).

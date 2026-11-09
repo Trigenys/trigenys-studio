@@ -182,6 +182,7 @@ async function emailStatuses(db: AppEnv["Variables"]["db"], alertIds: string[]):
     .where(inArray(notificationDispatch.alertId, alertIds));
   const rank: Record<EmailStatus, number> = { none: 0, sent: 1, pending: 2, failed: 3 };
   for (const r of rows) {
+    if (!r.alertId) continue;
     const s: EmailStatus = r.status === "failed" ? "failed" : r.status === "pending" || r.status === "sending" ? "pending" : r.status === "sent" ? "sent" : "none";
     const current = out.get(r.alertId) ?? "none";
     if (rank[s] > rank[current]) out.set(r.alertId, s);

@@ -9,7 +9,8 @@ import { fromLocalInput, toLocalInput } from "./dates";
 // user reloads the task and the form is rebuilt (keyed on the version).
 export function TaskEditForm({ task, me, reload }: { task: TaskDetail; me: Me; reload: () => void }) {
   const update = useUpdateTask(task.id);
-  const [assignMe, setAssignMe] = useState(task.assigneeId === me.userId);
+  const assignedToMe = task.assigneeId === me.userId;
+  const [assignMe, setAssignMe] = useState(assignedToMe);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -21,7 +22,9 @@ export function TaskEditForm({ task, me, reload }: { task: TaskDetail; me: Me; r
       brief: String(f.get("brief")),
       priority: Number(f.get("priority") ?? task.priority),
       dueAt: fromLocalInput(String(f.get("dueAt") ?? "")),
-      assigneeId: assignMe ? me.userId : null,
+      // Only an explicit toggle changes the assignee: editing a task assigned to
+      // someone else must not take it away from them.
+      ...(assignMe !== assignedToMe ? { assigneeId: assignMe ? me.userId : null } : {}),
     });
   };
 

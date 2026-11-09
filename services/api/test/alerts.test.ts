@@ -253,7 +253,7 @@ describe("notifications", () => {
   it("sends every pending e-mail with a link to the task and audits each one without the address", async () => {
     const pending = await pendingDispatches();
     const openIds = new Set((await h.db.select({ id: alert.id }).from(alert).where(eq(alert.state, "open"))).map((r) => r.id));
-    const sendable = pending.filter((d) => openIds.has(d.alertId)).length;
+    const sendable = pending.filter((d) => d.alertId !== null && openIds.has(d.alertId)).length;
     expect(sendable).toBeGreaterThan(0);
     const before = h.mailer.sent.length;
     const report = await notify();

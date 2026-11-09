@@ -71,6 +71,13 @@
       "when": 1793954752965,
       "tag": "0009_alerts_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794208634465,
+      "tag": "0010_task_assignment_notifications",
+      "breakpoints": true
     }
   ]
 }

@@ -36,7 +36,11 @@
     // "live" needs the ANTHROPIC_API_KEY Worker secret (wrangler secret put ANTHROPIC_API_KEY);
     // LLM_MODEL (optional var) overrides the default model of the adapter.
     "INTEGRATION_LLM_MODE": "mock",
+    // live: Trigenys Notify (ADR 0013), NOTIFY_EMAIL_BASE_URL var + NOTIFY_EMAIL_INGEST_KEY secret
+    // (wrangler secret put NOTIFY_EMAIL_INGEST_KEY); NOTIFY_PROJECT is the Notify project id.
     "INTEGRATION_EMAIL_MODE": "mock",
+    "NOTIFY_EMAIL_BASE_URL": "",
+    "NOTIFY_PROJECT": "trigenys-studio",
     // live: objects go to the private VISUALS bucket below (memory otherwise, not durable).
     "INTEGRATION_MEDIA_MODE": "mock",
     // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).

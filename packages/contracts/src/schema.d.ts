@@ -392,6 +392,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/products/{id}/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** People a task of this product can be assigned to (role on the product or global) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Assignable users, by name */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Assignee"][];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not allowed to edit this product's content */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Unknown product */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products/{id}": {
         parameters: {
             query?: never;
@@ -584,7 +649,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
-                /** @description Idempotency-Key reused for a different request */
+                /** @description Idempotency-Key reused for a different request, or assignee without access to the product */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -726,6 +791,15 @@ export interface paths {
                 };
                 /** @description Stale version */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Assignee without access to the task's product */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4851,6 +4925,12 @@ export interface components {
             /** @example insight */
             id: string;
             name: string;
+        };
+        Assignee: {
+            id: string;
+            name: string;
+            email: string;
+            roles: ("admin" | "operator" | "reviewer")[];
         };
         UpdateProduct: {
             /** Format: uri */

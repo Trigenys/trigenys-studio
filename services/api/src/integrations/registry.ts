@@ -6,6 +6,7 @@ import { HttpJsonMetrics } from "./http-json/metrics.ts";
 import { InsightCms } from "./insight/cms.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
+import { NotifyMailer } from "./notify/mailer.ts";
 import { MemoryMediaStore } from "./mock/media.ts";
 import { R2MediaStore } from "./r2/media.ts";
 import type { Integrations } from "./types.ts";
@@ -53,6 +54,12 @@ const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations
       throw new IntegrationNotAvailableError("radar", "live", "INTEGRATION_RADAR_MODE=live requires EDITORIAL_OS_BASE_URL and the EDITORIAL_OS_TOKEN secret");
     }
     return new EditorialOsRadar({ baseUrl: env.EDITORIAL_OS_BASE_URL, token: env.EDITORIAL_OS_TOKEN });
+  },
+  email: (env) => {
+    if (!env.NOTIFY_EMAIL_BASE_URL || !env.NOTIFY_EMAIL_INGEST_KEY) {
+      throw new IntegrationNotAvailableError("email", "live", "INTEGRATION_EMAIL_MODE=live requires NOTIFY_EMAIL_BASE_URL and the NOTIFY_EMAIL_INGEST_KEY secret");
+    }
+    return new NotifyMailer({ baseUrl: env.NOTIFY_EMAIL_BASE_URL, ingestKey: env.NOTIFY_EMAIL_INGEST_KEY, project: env.NOTIFY_PROJECT || undefined });
   },
 };
 

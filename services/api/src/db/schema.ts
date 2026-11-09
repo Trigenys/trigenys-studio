@@ -759,15 +759,22 @@ export const notificationPreference = pgTable(
 export const DISPATCH_STATUSES = ["pending", "sending", "sent", "failed", "skipped"] as const;
 export type DispatchStatus = (typeof DISPATCH_STATUSES)[number];
 
+// What a dispatch row announces: an open alert (ADR 0011) or a task that was
+// just assigned to its recipient (ADR 0013).
+export const NOTIFICATION_KINDS = ["alert", "task_assigned"] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
 // At-most-once e-mail outbox: one row per (alert, recipient, priority), sent
 // by the notifier with a lease, retried with backoff, never sent twice.
 export const notificationDispatch = pgTable(
   "notification_dispatch",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    alertId: uuid("alert_id")
-      .notNull()
-      .references(() => alert.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: NOTIFICATION_KINDS }).notNull().default("alert"),
+    // Set for an alert notice; null for a task assignment.
+    alertId: uuid("alert_id").references(() => alert.id, { onDelete: "cascade" }),
+    // Set for a task assignment notice.
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -788,5 +795,10 @@ export const notificationDispatch = pgTable(
     uniqueIndex("notification_dispatch_dedup_idx").on(t.dedupKey),
     index("notification_dispatch_status_idx").on(t.status, t.nextRetryAt),
     index("notification_dispatch_alert_idx").on(t.alertId),
+    index("notification_dispatch_task_idx").on(t.taskId),
+    check(
+      "notification_dispatch_subject_chk",
+      sql`(kind = 'alert' AND alert_id IS NOT NULL) OR (kind = 'task_assigned' AND task_id IS NOT NULL)`,
+    ),
   ],
 );
