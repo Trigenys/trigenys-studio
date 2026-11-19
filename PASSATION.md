@@ -467,3 +467,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Déploiement : dispatch `appfactory-infrastructure.yml --ref main`, run 44561237371 (résultat à vérifier).
 - Prochaine étape : connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail HTML + WhatsApp « Trigenys Comm » (cron 5 min).
 - PR #50 (passation) toujours ouverte.
+
+## 2026-11-19 17:51 — README production API/MCP (PR #56)
+
+- Run 44561237371 vert : e-mails HTML en production.
+- Vérifié en direct : `/health?deep=true` 200, `/openapi.json` 200, `/me` et `/mcp` 401 sans jeton.
+- #56 mergée (2e339c3) : section README « Production : web, API et MCP » (origine unique, jeton `session.token` en Bearer 30 j, `claude mcp add --transport http`, 16 outils, octroi de rôle via `/me` → `POST /roles`).
+- Limites connues : pas d'OAuth 2.1 MCP (connecteurs claude.ai), pas d'écran admin rôles/utilisateurs (pistes : `POST /roles` par e-mail).
+- Prochaine étape inchangée : Tiffany se connecte, envoie son `userId` (`/me`), rôle `operator`, assignation test.
+- PR #50 (passation) toujours ouverte ; `main` local en retard, à réaligner.
