@@ -12,9 +12,11 @@ explicite**, et **aucune release sans revue**.
 | `staging` | Cloudflare Pages (preview) | Worker `trigenys-studio-api-staging` | branche Neon `staging` | CI après merge sur `main`, **non activé** |
 | `production` | Cloudflare Pages | Worker `trigenys-studio-api` | branche Neon `main` | release approuvée, **non activé** |
 
-État : seuls `local` et la CI existent. `staging` et `production` attendent la contribution
-AppFactory U1 (`appfactory#185`, Neon + Hyperdrive) et un compte Cloudflare validé par le
-propriétaire. Tant que ces prérequis manquent, le pipeline s'arrête au build (`wrangler deploy
+État : seuls `local` et la CI existent. La base de production est provisionnée par AppFactory
+(U1, `appfactory#185` / PR `appfactory#192`) : le workflow `appfactory-infrastructure.yml`
+(push sur `main` touchant les migrations, ou lancement manuel) réconcilie la base Neon
+`trigenys_studio` puis applique les migrations Drizzle avec une URL louée par OIDC, sans aucun
+secret dans GitHub. Le Worker attend encore le profil Hyperdrive (U3) et la release. Tant que ces prérequis manquent, le pipeline s'arrête au build (`wrangler deploy
 --dry-run`, `vite build`, `assembleDebug`) : rien n'est publié.
 
 Règle **staging avant tout déploiement** : un changement n'atteint `production` qu'après avoir
@@ -42,6 +44,7 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 |---|---|---|---|
 | `AUTH_SECRET` | Worker secret | secret | signature des sessions Better Auth |
 | `HYPERDRIVE` | binding Hyperdrive | secret (URI Neon côté Cloudflare) | id provisionné par AppFactory |
+| `DATABASE_URL` (migrations) | bail AppFactory, job `appfactory-infrastructure` | secret éphémère | masqué dans les logs ; TLS `verify-full` imposé hors local |
 | `PASSKEY_RP_ID` | Worker secret / var | sensible | hôte de l'application |
 | `AUTH_BASE_URL`, `AUTH_TRUSTED_ORIGINS`, `PASSKEY_RP_NAME`, `INTEGRATION_*_MODE`, `SERVICE_NAME` | `wrangler.jsonc` | config | par environnement |
 | `VITE_API_URL` | build web | config | vide = même origine |

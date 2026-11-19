@@ -13,7 +13,7 @@ Chaque capacité manquante fait l'objet d'une issue puis d'une PR séparée dans
 
 | # | Dépôt | Sujet | Bloquant pour Studio |
 |---|---|---|---|
-| U1 | appfactory | Ajouter `Trigenys/trigenys-studio` à `APPFACTORY_NEON_TARGETS` (configuration serveur) | Incrément 2 (premier déploiement API) |
+| U1 | appfactory | Cible Neon scellée `Trigenys/trigenys-studio` + bail de migration (appfactory#185, PR appfactory#192) | Incrément 2 (premier déploiement API) |
 | U2 | appfactory | Matérialisation de blueprint dans un sous-chemin (`targetPath`) pour les monorepos | Non |
 | U3 | appfactory | Variante `typescript-api` en adaptateur Worker (Hono + Drizzle + Hyperdrive + wrangler) | Non — Studio pilote |
 | U4 | appfactory | Blueprint mobile `platform: kmp` (Compose Multiplatform Android + iOS, Roborazzi, CI macOS gardée) | Incrément 6 — Studio pilote sinon |
