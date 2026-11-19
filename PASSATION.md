@@ -330,3 +330,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - Trigenys/trigenys-studio#44 (canal WhatsApp de groupe, ADR 0014) fusionnée en squash (c7504f5), branche distante supprimée.
 - Prochaine étape, sur accord : groupe « Studio Comm » + id @g.us, clé partagée Notify/Studio, PR Notify activant trigenys-studio dans WHATSAPP_PROJECTS_JSON, vars Studio (INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned). Déploiement toujours bloqué par Trigenys/appfactory#185.
+
+## 2026-11-19 09:06 — Activation WhatsApp : en attente du groupe
+
+- Session WAHA de Notify sur le VPS : `trigenys-test` (conteneur trigenys-waha, port 3000), compte « Trigenys Group », WORKING. Aucun groupe « Studio Comm » n'existe encore.
+- Bloquant : le propriétaire crée le groupe « Studio Comm » sur son téléphone et y ajoute le compte « Trigenys Group » et Tiffany. Ensuite : relever l'id @g.us (lecture WAHA), PR Notify (wrangler.production.jsonc, entrée trigenys-studio enabled + groupe).
+- Limites : le Studio n'a pas encore d'origine HTTPS publique (AUTH_TRUSTED_ORIGINS = localhost), donc allowedLinkOrigins reste vide et aucun lien ne part ; secret Studio et test réel impossibles avant déploiement (Trigenys/appfactory#185).
