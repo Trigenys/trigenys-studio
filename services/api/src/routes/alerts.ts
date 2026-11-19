@@ -284,7 +284,7 @@ export const alertRoutes = new OpenAPIHono<AppEnv>()
     const db = c.var.db;
     const result = await idempotent(c, {}, async () => {
       const reconcile = await reconcileAlerts({ db, tuning: alertTuning(c.env), actor: principal, requestId: c.var.requestId });
-      const notify = await dispatchNotifications({ db, mailer: c.var.integrations.email, webAppUrl: webAppUrl(c.env) });
+      const notify = await dispatchNotifications({ db, mailer: c.var.integrations.email, whatsapp: c.var.integrations.whatsapp, webAppUrl: webAppUrl(c.env) });
       return { status: 200 as const, body: { reconcile, notify } };
     });
     return c.json(result.body, result.status);

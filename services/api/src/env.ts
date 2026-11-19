@@ -22,6 +22,7 @@ export type Bindings = {
   INTEGRATION_METRICS_MODE?: IntegrationMode;
   INTEGRATION_LLM_MODE?: IntegrationMode;
   INTEGRATION_EMAIL_MODE?: IntegrationMode;
+  INTEGRATION_WHATSAPP_MODE?: IntegrationMode;
   // Logos and rendered visuals: private R2 bucket in live mode, memory in mock mode.
   INTEGRATION_MEDIA_MODE?: IntegrationMode;
   VISUALS?: R2Bucket;
@@ -64,6 +65,14 @@ export type Bindings = {
   NOTIFY_EMAIL_BASE_URL?: string;
   NOTIFY_EMAIL_INGEST_KEY?: string;
   NOTIFY_PROJECT?: string;
+  // Team group chat: WhatsApp through the Notify generic route (ADR 0014).
+  // WHATSAPP_NOTIFY_EVENTS lists the events posted to the group (comma
+  // separated, today only "task_assigned"); empty means none is queued.
+  // INTEGRATION_WHATSAPP_MODE=live needs the NOTIFY_WHATSAPP_INGEST_KEY secret
+  // and NOTIFY_WHATSAPP_BASE_URL (defaults to NOTIFY_EMAIL_BASE_URL).
+  WHATSAPP_NOTIFY_EVENTS?: string;
+  NOTIFY_WHATSAPP_BASE_URL?: string;
+  NOTIFY_WHATSAPP_INGEST_KEY?: string;
 };
 
 export type Variables = {

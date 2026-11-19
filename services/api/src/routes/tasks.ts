@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, asc, desc, eq, inArray, lte, type SQL } from "drizzle-orm";
-import { assertAssignable, queueAssignmentNotice } from "../alerts/assignment.ts";
+import { assertAssignable, notificationChannels, queueAssignmentNotice } from "../alerts/assignment.ts";
 import { reconcileTaskAlerts } from "../alerts/reconcile.ts";
 import { audited, recordAudit } from "../auth/audit.ts";
 import { authorize, requireSession } from "../auth/middleware.ts";
@@ -544,7 +544,7 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
             assigneeId: row!.assigneeId,
             previousAssigneeId: null,
             actorId: principal.userId,
-          });
+          }, notificationChannels(c.env, "task_assigned"));
           return row!;
         },
       );
@@ -595,7 +595,7 @@ export const taskRoutes = new OpenAPIHono<AppEnv>()
             assigneeId: row.assigneeId,
             previousAssigneeId: before.assigneeId,
             actorId: principal.userId,
-          });
+          }, notificationChannels(c.env, "task_assigned"));
         }
         return row;
       },

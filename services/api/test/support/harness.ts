@@ -4,6 +4,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import type { AuthConfig } from "../../src/auth/auth.ts";
 import { createApp } from "../../src/app.ts";
 import type { Db } from "../../src/db/client.ts";
+import type { Bindings } from "../../src/env.ts";
 import * as schema from "../../src/db/schema.ts";
 import { roleAssignment, type Role } from "../../src/db/schema.ts";
 import { MockMailer } from "../../src/integrations/mock/mailer.ts";
@@ -20,7 +21,7 @@ export const authConfig: AuthConfig = {
 
 // A fresh in-memory Postgres per harness, migrated with the committed SQL so
 // the migrations themselves are exercised by every test run.
-export async function createHarness(options: { integrations?: Partial<Integrations> } = {}) {
+export async function createHarness(options: { integrations?: Partial<Integrations>; env?: Partial<Bindings> } = {}) {
   const client = new PGlite();
   const db = drizzle({ client, schema }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
@@ -31,7 +32,7 @@ export async function createHarness(options: { integrations?: Partial<Integratio
   const request = (path: string, init: RequestInit = {}, token?: string) => {
     const headers = new Headers(init.headers);
     if (token) headers.set("authorization", `Bearer ${token}`);
-    return app.request(path, { ...init, headers }, {});
+    return app.request(path, { ...init, headers }, { ...options.env });
   };
 
   // Full magic-link round trip: request a link, read it from the mock mailer,
