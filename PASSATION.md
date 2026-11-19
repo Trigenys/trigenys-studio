@@ -433,3 +433,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Cause 2, PR #52 ouverte : Studio → Notify, deux Workers `workers.dev` du même compte, `fetch` refusé (404, erreur 1042) → drapeau `global_fetch_strictly_public` (LESSON-STUDIO-2026-012). Le merge déclenche seul le workflow infra (fichier `wrangler.production.jsonc`).
 - Après déploiement de #52 : refaire `POST /api/auth/sign-in/magic-link` (attendu 200), puis connexion utilisatrice, puis assignation test.
 - Main local diverge d'origin/main : travailler sur des branches tirées d'`origin/main`.
+
+## 2026-11-19 15:22 — Lien de connexion rétabli en production
+
+- #52 fusionnée (596f1c3), run infra 44542428321 vert (base + release Worker).
+- `POST /api/auth/sign-in/magic-link` → 200 `{"status":true}` ; health 200. Un e-mail réel est parti vers l'adresse de l'utilisatrice.
+- Prochaine étape : connexion de l'utilisatrice, `bootstrap-local.sql` avec son e-mail (console Neon), connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail + WhatsApp (cron 5 min).
+- PR #50 (passation) toujours ouverte, à fusionner.
