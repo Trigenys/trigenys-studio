@@ -1,5 +1,5 @@
 import type { Cms, CmsArticle, ListQuery } from "../types.ts";
-import { UpstreamError, upstreamJson } from "../upstream.ts";
+import { UpstreamError, upstreamJson, defaultFetch } from "../upstream.ts";
 
 // Trigenys Insight CMS, read through its automation endpoint
 // (`POST {base}/api/editorial-os`, operation "list-posts", service bearer).
@@ -38,7 +38,7 @@ export class InsightCms implements Cms {
     this.token = options.token;
     this.base = options.baseUrl.replace(/\/+$/, "");
     this.locale = options.locale ?? "fr";
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
   }
 
   async listArticles(query: ListQuery): Promise<CmsArticle[]> {

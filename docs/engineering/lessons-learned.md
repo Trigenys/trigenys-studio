@@ -158,3 +158,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Toute modification de la recette de build (scripts appelés par `npm run check`) se prouve dans un clone neuf, en rejouant la commande exacte de la recette depuis son `rootDirectory` (`npm install --ignore-scripts --no-audit --no-fund && npm run check` dans `services/api`), pas dans le checkout de travail.
 
 **Leçon généralisée** — Une preuve de build vaut pour l'environnement où elle tourne ; reproduire l'état initial de la cible (clone neuf, même répertoire, même commande) avant de conclure.
+
+### LESSON-STUDIO-2026-011 — `fetch` rangé sur un objet lève « Illegal invocation » sur Workers
+
+**Contexte** — Premier passage de l'e-mail en `live` en production (#48/#49) : demande de lien de connexion sur la web app.
+
+**Failure / near miss** — « Envoi impossible » côté écran, HTTP 500 sur `/api/auth/sign-in/magic-link`. `wrangler tail` : `UpstreamError: trigenys-notify-mailer: unreachable (Illegal invocation: function called with incorrect this reference)`.
+
+**Cause racine** — Les adaptateurs HTTP gardaient `options.fetch ?? fetch` dans `this.fetchImpl` et `NotifyMailer`/`NotifyWhatsApp` l'appelaient comme méthode : le `fetch` global reçoit alors l'adaptateur comme `this`, ce que le runtime Workers refuse. Node l'accepte, et tous les tests injectaient un `fetch` : le chemin par défaut n'était jamais exercé.
+
+**Résolution** — `defaultFetch` partagé (`src/integrations/upstream.ts`) qui appelle toujours le `fetch` global non lié, utilisé par les six adaptateurs. Test `default-fetch.test.ts` avec un `fetch` global qui reproduit la règle Workers (rouge avant, vert après).
+
+**Prévention** — Un adaptateur ne stocke jamais le `fetch` global brut : il utilise `defaultFetch`. Revue : `grep -rn "?? fetch\b" services/api/src` doit rester vide. Tout passage d'une intégration en `live` se teste en production sur un envoi réel avant d'annoncer la mise en service.
+
+**Leçon généralisée** — Un chemin par défaut que les tests remplacent toujours par une doublure n'est pas testé ; reproduire dans au moins un test la contrainte du runtime cible.

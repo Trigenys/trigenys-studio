@@ -1,5 +1,5 @@
 import type { Mail, Mailer } from "../types.ts";
-import { UpstreamError } from "../upstream.ts";
+import { UpstreamError, defaultFetch } from "../upstream.ts";
 
 // Live mailer backed by Trigenys Notify (generic e-mail route, contract v1):
 // `POST {base}/v1/dispatch/{project}/email` with the product-scoped key in
@@ -37,7 +37,7 @@ export class NotifyMailer implements Mailer {
     this.base = options.baseUrl.replace(/\/+$/, "");
     this.ingestKey = options.ingestKey;
     this.project = options.project ?? "trigenys-studio";
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
     this.now = options.now ?? (() => new Date());
   }
 

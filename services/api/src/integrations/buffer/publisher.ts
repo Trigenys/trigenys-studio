@@ -1,4 +1,5 @@
 import type { ProviderAccount, Publisher, PublishRequest, PublishResult, RemotePost } from "../types.ts";
+import { defaultFetch } from "../upstream.ts";
 
 // Buffer, through its public GraphQL API (`POST {base}/`, bearer API key).
 // Buffer offers no idempotency key: the outbox never calls `publish` twice
@@ -51,7 +52,7 @@ export class BufferPublisher implements Publisher {
     this.apiKey = options.apiKey;
     this.base = (options.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
     this.organizationId = options.organizationId;
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.now = options.now ?? (() => new Date());
   }

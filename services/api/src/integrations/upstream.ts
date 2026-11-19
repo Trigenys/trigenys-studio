@@ -27,3 +27,9 @@ export async function upstreamJson<T>(upstream: string, fetchImpl: typeof fetch,
     throw new UpstreamError(upstream, "Non-JSON response", res.status);
   }
 }
+
+// Default transport for adapters. Workers throw "Illegal invocation" when the
+// global fetch runs with another `this`, which is what happens once it is
+// stored on an adapter and called as `this.fetchImpl(...)`; the wrapper always
+// calls it unbound.
+export const defaultFetch: typeof fetch = (...args: Parameters<typeof fetch>) => fetch(...args);
