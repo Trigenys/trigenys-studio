@@ -116,7 +116,8 @@ racine, résolution, prévention vérifiable) avant de clore l'incident.
 
 ## 6. Prérequis propriétaire (bloquants pour staging/production)
 
-1. Neon + Hyperdrive via AppFactory U1 (`appfactory#185`).
+1. Neon + Hyperdrive via AppFactory U1 (`appfactory#185`) — fait : base provisionnée (#45),
+   Worker publié par le job `worker` du workflow `appfactory-infrastructure.yml` (ADR 0015).
 2. Compte Cloudflare (Workers + Pages) et environnements GitHub `staging` / `production` avec
    *required reviewers*.
 3. `APPFACTORY_RELEASE_TOKEN` posé ; Project doublon (#15) nettoyé.

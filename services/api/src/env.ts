@@ -10,6 +10,8 @@ export type Bindings = {
   HYPERDRIVE?: Hyperdrive;
   // Better Auth. AUTH_SECRET is a Worker secret (>= 32 chars), never a var.
   AUTH_SECRET?: string;
+  // Same role, generated and owned by AppFactory in production.
+  TRIGENYS_STUDIO_AUTH_SECRET?: string;
   AUTH_BASE_URL?: string;
   // Comma-separated browser origins allowed to call the API (web app).
   AUTH_TRUSTED_ORIGINS?: string;
