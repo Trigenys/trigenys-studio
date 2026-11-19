@@ -10,7 +10,7 @@ Dépôt généré par Trigenys AppFactory, organisé en monorepo.
 |---|---|---|
 | `apps/web` | Cockpit web — React 19, TypeScript, Vite | socle |
 | `apps/mobile` | Android + iOS — Kotlin / Compose Multiplatform | à venir |
-| `services/api` | API — Cloudflare Worker, Hono, Drizzle, Neon | socle (`/health`, OpenAPI, mocks d'intégration) |
+| `services/api` | API — Cloudflare Worker, Hono, Drizzle, Neon | en production (REST, MCP, outbox de notifications) |
 | `packages/contracts` | Contrat OpenAPI 3.1 (`openapi.json`) et client TypeScript généré | socle |
 | `docs/adr` | Décisions d'architecture | ADR 0001–0004 |
 | `docs/discovery.md` | Personas, parcours, RBAC, règles de validation | — |
@@ -75,6 +75,71 @@ MCP : `POST /mcp` (Streamable HTTP sans état, réponses JSON) expose seize outi
 Parcours prestataire (ADR 0013) : un admin donne à la prestataire un rôle `operator` sur ses produits ; elle se connecte depuis son téléphone par lien magique ou passkey et filtre « mes tâches ». Le travail lui est confié depuis le cockpit, l'API (`POST /tasks` ou `PATCH /tasks/{id}` avec `assigneeId`) ou un assistant via MCP (`list_assignees` → `create_task` / `assign_task`). Chaque assignation à quelqu'un d'autre met un e-mail en file (outbox des notifications), envoyé par Trigenys Notify en mode `INTEGRATION_EMAIL_MODE=live`, avec le lien direct vers la tâche. En option (ADR 0014), la même assignation est postée dans le groupe WhatsApp d'équipe via Trigenys Notify (`WHATSAPP_NOTIFY_EVENTS=task_assigned`, `INTEGRATION_WHATSAPP_MODE=live`), sans adresse e-mail ni brief.
 
 Migrations : `npm run db:generate -w services/api` après un changement de `src/db/schema.ts`, `npm run db:migrate -w services/api` avec `DATABASE_URL`. Les tests rejouent les migrations sur PGlite (Postgres en mémoire), sans base externe.
+
+## Production : web, API et MCP
+
+Un seul Worker sert l'application web, l'API REST et le serveur MCP, sur la même origine :
+`https://trigenys-studio-api.lawrynnjennifer.workers.dev` (variables `AUTH_BASE_URL` et `WEB_APP_URL`
+de `services/api/wrangler.production.jsonc`).
+
+| Chemin | Rôle |
+|---|---|
+| `/` | Cockpit web (connexion par lien magique ou passkey) |
+| `/health?deep=true` | Santé du Worker et de la base |
+| `/openapi.json` | Contrat OpenAPI 3.1 de l'API REST (client TypeScript : `packages/contracts`) |
+| `/mcp` | Serveur MCP (Streamable HTTP sans état, `POST`) |
+
+### Jeton d'accès (API et MCP)
+
+L'API et le MCP acceptent la session du navigateur (cookie) ou un jeton `Authorization: Bearer`.
+Pour obtenir le jeton d'un compte :
+
+1. se connecter sur le cockpit ;
+2. dans le même navigateur, ouvrir `/api/auth/get-session` : la réponse JSON contient `session.token` ;
+3. utiliser cette valeur comme `Authorization: Bearer <jeton>`.
+
+Le jeton porte exactement les droits de son compte (rôles `admin`, `operator`, `reviewer`) et vaut
+30 jours ; la déconnexion le révoque. C'est un secret : ne jamais le committer, le coller dans un
+ticket ou le journaliser.
+
+```bash
+curl -H "Authorization: Bearer $STUDIO_TOKEN" https://trigenys-studio-api.lawrynnjennifer.workers.dev/me
+```
+
+### Brancher un assistant (MCP)
+
+Tout client MCP qui accepte un en-tête HTTP personnalisé, par exemple Claude Code :
+
+```bash
+claude mcp add --transport http trigenys-studio https://trigenys-studio-api.lawrynnjennifer.workers.dev/mcp --header "Authorization: Bearer $STUDIO_TOKEN"
+```
+
+Les connecteurs qui exigent une connexion OAuth (connecteurs personnalisés de claude.ai, par exemple)
+ne sont pas encore pris en charge : l'autorisation OAuth 2.1 du MCP est l'étape suivante.
+
+Seize outils, avec les mêmes droits, le même audit et les mêmes erreurs que le REST (ADR 0012,
+table dans `services/api/src/mcp/tools.ts`) :
+
+| Domaine | Outils |
+|---|---|
+| Tâches | `list_tasks`, `get_task`, `create_task`, `assign_task`, `list_assignees` |
+| Validation | `decide_approval` |
+| Publication | `list_social_accounts`, `check_publish_readiness`, `schedule_task` |
+| Imports | `list_imports`, `sync_imports`, `create_task_from_import`, `ignore_import` |
+| Alertes | `list_alerts`, `acknowledge_alert` |
+| Reporting | `get_editorial_report` |
+
+### Donner accès à une personne
+
+1. La personne se connecte une fois sur le cockpit (lien magique), puis ouvre `/me` et transmet son
+   `userId`.
+2. Un admin lui donne un rôle : `POST /roles` avec `{"userId": "...", "role": "operator", "productId": null}`
+   (`productId` limite le rôle à un produit : `insight`, `precis`, `atelier`). L'opération est auditée
+   et rejouable sans effet.
+3. Elle apparaît alors dans `list_assignees` ; chaque tâche qui lui est assignée lui envoie un e-mail
+   (et un message au groupe WhatsApp d'équipe si activé, voir ADR 0013 et 0014).
+
+Le premier admin d'un environnement ne passe pas par l'API : voir « Premier admin et produits » plus haut.
 
 ## CI / automatisation
 
