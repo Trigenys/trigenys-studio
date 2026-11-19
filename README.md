@@ -54,7 +54,9 @@ npm run generate -w packages/contracts    # régénère le client TypeScript
    ne les crée pas (routes admin `POST /roles`, `POST /products`). Une seule fois, après la
    première connexion, exécuter `services/api/scripts/bootstrap-local.sql` dans la console
    SQL Neon (ou `psql`) avec votre e-mail : il donne le rôle admin et crée les trois produits.
-   Rejouable sans effet.
+   Rejouable sans effet. **En production**, après la première connexion : lancer le workflow
+   `AppFactory infrastructure` à la main avec l'entrée `admin_email` (seul ce workflow obtient
+   la base, par bail AppFactory) ; même effet, idempotent, audité `admin.bootstrap`.
 6. **Données** : créer un brand kit, des comptes sociaux et des tâches depuis l'interface ;
    « Vérifier maintenant » sur `/alerts` calcule les alertes.
 
