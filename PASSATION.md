@@ -319,3 +319,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - Trigenys/trigenys-notify#61 (route WhatsApp générique par projet) fusionnée en squash (f794c02) après résolution du conflit par la session Notify ; CI verte.
 - Prochaine étape : canal WhatsApp côté Studio (PR séparée), groupe « Studio Comm » à créer et déclarer côté Notify. Déploiement toujours bloqué par Trigenys/appfactory#185, le compte Cloudflare et APPFACTORY_RELEASE_TOKEN.
+
+## 2026-11-19 09:01 — PR #44 canal WhatsApp Studio
+
+- Trigenys/trigenys-studio#44 ouverte (branche feat/notify-whatsapp) : canal WhatsApp de groupe via la route générique Notify, opt-in `WHATSAPP_NOTIFY_EVENTS=task_assigned` + `INTEGRATION_WHATSAPP_MODE=live` + secret `NOTIFY_WHATSAPP_INGEST_KEY`. ADR 0014.
+- Preuves : typecheck OK, 176 tests verts, build dry-run OK.
+- Activation restante (sur accord) : groupe « Studio Comm » + id @g.us, clé partagée Notify/Studio, PR Notify activant trigenys-studio dans WHATSAPP_PROJECTS_JSON, vars Studio.
