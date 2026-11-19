@@ -41,6 +41,12 @@
     "INTEGRATION_EMAIL_MODE": "mock",
     "NOTIFY_EMAIL_BASE_URL": "",
     "NOTIFY_PROJECT": "trigenys-studio",
+    // Team group chat (ADR 0014): events posted to the WhatsApp group declared for the project in
+    // Notify ("task_assigned"; empty = nothing queued). live: NOTIFY_WHATSAPP_INGEST_KEY secret
+    // (wrangler secret put NOTIFY_WHATSAPP_INGEST_KEY); NOTIFY_WHATSAPP_BASE_URL defaults to NOTIFY_EMAIL_BASE_URL.
+    "WHATSAPP_NOTIFY_EVENTS": "",
+    "INTEGRATION_WHATSAPP_MODE": "mock",
+    "NOTIFY_WHATSAPP_BASE_URL": "",
     // live: objects go to the private VISUALS bucket below (memory otherwise, not durable).
     "INTEGRATION_MEDIA_MODE": "mock",
     // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).

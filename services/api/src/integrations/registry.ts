@@ -6,7 +6,9 @@ import { HttpJsonMetrics } from "./http-json/metrics.ts";
 import { InsightCms } from "./insight/cms.ts";
 import { MockCms, MockLlm, MockMetrics, MockPublisher, MockRadar } from "./mock/index.ts";
 import { MockMailer } from "./mock/mailer.ts";
+import { MockGroupMessenger } from "./mock/group-messenger.ts";
 import { NotifyMailer } from "./notify/mailer.ts";
+import { NotifyWhatsApp } from "./notify/whatsapp.ts";
 import { MemoryMediaStore } from "./mock/media.ts";
 import { R2MediaStore } from "./r2/media.ts";
 import type { Integrations } from "./types.ts";
@@ -61,6 +63,18 @@ const live: Partial<{ [K in keyof Integrations]: (env: Bindings) => Integrations
     }
     return new NotifyMailer({ baseUrl: env.NOTIFY_EMAIL_BASE_URL, ingestKey: env.NOTIFY_EMAIL_INGEST_KEY, project: env.NOTIFY_PROJECT || undefined });
   },
+  whatsapp: (env) => {
+    // Same Notify instance as e-mail unless a dedicated base is configured.
+    const baseUrl = env.NOTIFY_WHATSAPP_BASE_URL || env.NOTIFY_EMAIL_BASE_URL;
+    if (!baseUrl || !env.NOTIFY_WHATSAPP_INGEST_KEY) {
+      throw new IntegrationNotAvailableError(
+        "whatsapp",
+        "live",
+        "INTEGRATION_WHATSAPP_MODE=live requires NOTIFY_WHATSAPP_BASE_URL (or NOTIFY_EMAIL_BASE_URL) and the NOTIFY_WHATSAPP_INGEST_KEY secret",
+      );
+    }
+    return new NotifyWhatsApp({ baseUrl, ingestKey: env.NOTIFY_WHATSAPP_INGEST_KEY, project: env.NOTIFY_PROJECT || undefined });
+  },
 };
 
 function normalise(value: IntegrationMode | undefined): IntegrationMode {
@@ -75,6 +89,7 @@ export function integrationModes(env: Bindings): Record<keyof Integrations, Inte
     metrics: normalise(env.INTEGRATION_METRICS_MODE),
     llm: normalise(env.INTEGRATION_LLM_MODE),
     email: normalise(env.INTEGRATION_EMAIL_MODE),
+    whatsapp: normalise(env.INTEGRATION_WHATSAPP_MODE),
     media: normalise(env.INTEGRATION_MEDIA_MODE),
   };
 }
@@ -98,6 +113,7 @@ export function createIntegrations(env: Bindings, overrides: Partial<Integration
     metrics: new MockMetrics(),
     llm: new MockLlm(),
     email: new MockMailer((line) => console.log(line)),
+    whatsapp: new MockGroupMessenger((line) => console.log(line)),
     media: new MemoryMediaStore(),
     ...selected,
     ...overrides,

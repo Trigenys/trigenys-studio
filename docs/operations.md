@@ -55,6 +55,8 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `WEB_APP_URL` | `wrangler.jsonc` | config | base des liens vers les tâches dans les e-mails d'alerte ; sans elle aucun e-mail d'alerte ne part (audité `skipped`) |
 | `NOTIFY_EMAIL_INGEST_KEY` | Worker secret (`wrangler secret put NOTIFY_EMAIL_INGEST_KEY`) | secret | clé produit de Trigenys Notify (en-tête `x-notify-auth`) ; requise quand `INTEGRATION_EMAIL_MODE=live` ; jamais journalisée. Côté Notify : secret `EMAIL_TRIGENYS_STUDIO_INGEST_KEY` (même valeur) et projet `trigenys-studio` dans `EMAIL_PROJECTS_JSON` (ADR 0013) |
 | `NOTIFY_EMAIL_BASE_URL`, `NOTIFY_PROJECT` | `wrangler.jsonc` | config | base du Worker Notify et identifiant de projet (`trigenys-studio`) ; liens magiques, alertes et assignations passent par la route e-mail générique |
+| `NOTIFY_WHATSAPP_INGEST_KEY` | Worker secret (`wrangler secret put NOTIFY_WHATSAPP_INGEST_KEY`) | secret | clé produit WhatsApp de Trigenys Notify (`x-notify-auth`) ; requise quand `INTEGRATION_WHATSAPP_MODE=live` ; jamais journalisée. Côté Notify : secret `WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY` (même valeur) et projet activé dans `WHATSAPP_PROJECTS_JSON` (ADR 0014) |
+| `INTEGRATION_WHATSAPP_MODE`, `WHATSAPP_NOTIFY_EVENTS`, `NOTIFY_WHATSAPP_BASE_URL` | `wrangler.jsonc` | config | message au groupe d'équipe : `mock` par défaut ; événements publiés (`task_assigned`, vide = aucun) ; base Notify (défaut `NOTIFY_EMAIL_BASE_URL`) |
 | Clés des intégrations (CMS, e-mail, LLM) | Worker secrets | secret | absentes tant que `INTEGRATION_*_MODE=mock` |
 
 Vérification avant chaque release : la recherche de `AUTH_SECRET=` ou `postgresql://` dans

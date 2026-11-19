@@ -133,6 +133,22 @@ export interface Mailer {
   send(mail: Mail): Promise<void>;
 }
 
+// A short message posted to the team's group chat (WhatsApp through Trigenys
+// Notify). There is no recipient: Notify owns the destination group.
+export type GroupMessage = {
+  text: string;
+  // An https link shown under the text, with an optional label.
+  link?: string;
+  linkLabel?: string;
+  // Stable identity of this send attempt, for providers that deduplicate.
+  key: string;
+};
+
+export interface GroupMessenger {
+  readonly name: string;
+  send(message: GroupMessage): Promise<void>;
+}
+
 export type MediaObject = { bytes: Uint8Array; mime: string };
 
 // Content-addressed object storage for logos and rendered visuals. Keys are
@@ -150,5 +166,6 @@ export type Integrations = {
   metrics: MetricsProvider;
   llm: Llm;
   email: Mailer;
+  whatsapp: GroupMessenger;
   media: MediaStore;
 };

@@ -2,12 +2,13 @@ import { and, asc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { recordAudit } from "../auth/audit.ts";
 import type { Db, Tx } from "../db/client.ts";
 import { alert, notificationDispatch, product, task, user, type AlertKind, type AlertPriority } from "../db/schema.ts";
-import type { Mail, Mailer } from "../integrations/types.ts";
+import type { GroupMessenger, Mail, Mailer } from "../integrations/types.ts";
 import { backoffSeconds } from "../publishing/dispatch.ts";
 import { PRIORITY_LABELS } from "./rules.ts";
 
-// At-most-once e-mail outbox for alerts (ADR 0011) and task assignments
-// (ADR 0013), in the three phases of
+// At-most-once notification outbox for alerts (ADR 0011) and task
+// assignments (ADR 0013), by e-mail or to the team group chat (ADR 0014), in
+// the three phases of
 // the publishing outbox: claim under a row lock with a lease, send with no
 // transaction open, record. A row found `sending` past its lease may have
 // reached the provider: it is failed as uncertain and never sent again.
@@ -16,6 +17,8 @@ import { PRIORITY_LABELS } from "./rules.ts";
 export type NotifyOptions = {
   db: Db;
   mailer: Mailer;
+  // Team group chat; without it, group rows are skipped, never sent by e-mail.
+  whatsapp?: GroupMessenger | null;
   now?: () => Date;
   // Base of the task links in the e-mails; without it nothing is sent.
   webAppUrl: string | null;
@@ -27,13 +30,11 @@ export type NotifyReport = { claimed: number; sent: number; retried: number; fai
 
 type DispatchRow = typeof notificationDispatch.$inferSelect;
 
-type Claimed = {
-  row: DispatchRow;
-  to: string;
-  template: Mail["template"];
-  subject: string;
-  text: string;
-};
+type Delivery =
+  | { channel: "email"; to: string; template: Mail["template"]; subject: string; text: string }
+  | { channel: "whatsapp"; text: string; link: string; linkLabel: string };
+
+type Claimed = { row: DispatchRow; delivery: Delivery };
 
 export const alertPath = (kind: AlertKind, taskId: string) => `/tasks/${taskId}${kind === "publication_failed" ? "#publication" : ""}`;
 
@@ -67,23 +68,36 @@ export async function dispatchNotifications(options: NotifyOptions): Promise<Not
     .limit(limit);
 
   for (const { id } of candidates) {
-    const claimed = await db.transaction((tx) => claim(tx, id, now(), leaseMs, options.webAppUrl, report));
+    const whatsapp = options.whatsapp ?? null;
+    const claimed = await db.transaction((tx) => claim(tx, id, now(), leaseMs, options.webAppUrl, whatsapp !== null, report));
     if (!claimed) continue;
     report.claimed += 1;
 
+    const key = `${claimed.row.id}:${claimed.row.attempts}`;
+    const d = claimed.delivery;
+    const provider = d.channel === "whatsapp" ? whatsapp!.name : mailer.name;
     let error: string | null = null;
     try {
-      await mailer.send({ to: claimed.to, template: claimed.template, subject: claimed.subject, text: claimed.text, key: `${claimed.row.id}:${claimed.row.attempts}` });
+      if (d.channel === "whatsapp") await whatsapp!.send({ text: d.text, link: d.link, linkLabel: d.linkLabel, key });
+      else await mailer.send({ to: d.to, template: d.template, subject: d.subject, text: d.text, key });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
 
-    await db.transaction((tx) => record(tx, claimed.row, error, mailer.name, now(), report));
+    await db.transaction((tx) => record(tx, claimed.row, error, provider, now(), report));
   }
   return report;
 }
 
-async function claim(tx: Tx, id: string, now: Date, leaseMs: number, webAppUrl: string | null, report: NotifyReport): Promise<Claimed | null> {
+async function claim(
+  tx: Tx,
+  id: string,
+  now: Date,
+  leaseMs: number,
+  webAppUrl: string | null,
+  hasWhatsapp: boolean,
+  report: NotifyReport,
+): Promise<Claimed | null> {
   const [row] = await tx.select().from(notificationDispatch).where(eq(notificationDispatch.id, id)).for("update", { skipLocked: true });
   if (!row) return null;
   const due = row.status === "pending" && (row.nextRetryAt === null || row.nextRetryAt.getTime() <= now.getTime());
@@ -105,28 +119,37 @@ async function claim(tx: Tx, id: string, now: Date, leaseMs: number, webAppUrl: 
     return null;
   };
 
+  if (row.channel !== "email" && row.channel !== "whatsapp") return skip(`Canal de notification inconnu : ${row.channel}.`, "skipped");
+  if (row.channel === "whatsapp" && !hasWhatsapp) return skip("Le canal WhatsApp n'est pas configuré pour cet envoi.", "skipped");
   const message = row.kind === "task_assigned" ? await assignmentMessage(tx, row) : await alertMessage(tx, row);
   if ("skip" in message) return skip(message.skip, "skipped");
   if (!webAppUrl) return skip("WEB_APP_URL n'est pas configurée : définir la var du Worker pour envoyer les liens.", "skipped");
-  const [u] = await tx.select({ email: user.email }).from(user).where(eq(user.id, row.userId));
-  if (!u?.email) return skip("Le destinataire n'a pas d'adresse e-mail.", "skipped");
+  const link = `${webAppUrl.replace(/\/+$/, "")}${message.path}`;
+  let delivery: Delivery;
+  if (row.channel === "whatsapp") {
+    delivery = { channel: "whatsapp", text: message.groupText, link, linkLabel: "Ouvrir dans le Studio" };
+  } else {
+    const [u] = await tx.select({ email: user.email }).from(user).where(eq(user.id, row.userId));
+    if (!u?.email) return skip("Le destinataire n'a pas d'adresse e-mail.", "skipped");
+    delivery = {
+      channel: "email",
+      to: u.email,
+      template: message.template,
+      subject: message.subject,
+      text: `${message.body}\n\nÀ traiter dans le Studio : ${link}`,
+    };
+  }
 
   const attempts = row.attempts + 1;
   await tx
     .update(notificationDispatch)
     .set({ status: "sending", attempts, claimedUntil: new Date(now.getTime() + leaseMs), nextRetryAt: null })
     .where(eq(notificationDispatch.id, id));
-  const link = `${webAppUrl.replace(/\/+$/, "")}${message.path}`;
-  return {
-    row: { ...row, attempts },
-    to: u.email,
-    template: message.template,
-    subject: message.subject,
-    text: `${message.body}\n\nÀ traiter dans le Studio : ${link}`,
-  };
+  return { row: { ...row, attempts }, delivery };
 }
 
-type Message = { template: Mail["template"]; subject: string; body: string; path: string } | { skip: string };
+// `groupText` is what the team group reads: no e-mail address, no brief.
+type Message = { template: Mail["template"]; subject: string; body: string; groupText: string; path: string } | { skip: string };
 
 async function alertMessage(tx: Tx, row: DispatchRow): Promise<Message> {
   if (!row.alertId) return { skip: "La notification ne référence aucune alerte." };
@@ -140,6 +163,7 @@ async function alertMessage(tx: Tx, row: DispatchRow): Promise<Message> {
     template: "alert",
     subject: `[Studio] ${PRIORITY_LABELS[a.priority as AlertPriority]} · ${a.title}`,
     body: `${a.title}\n\n${a.detail}`,
+    groupText: `Alerte ${PRIORITY_LABELS[a.priority as AlertPriority]} : ${a.title}\n${a.detail}`,
     path: alertPath(a.kind as AlertKind, a.taskId),
   };
 }
@@ -155,6 +179,7 @@ async function assignmentMessage(tx: Tx, row: DispatchRow): Promise<Message> {
     .where(eq(task.id, row.taskId));
   if (!t) return { skip: "La tâche n'existe plus." };
   if (t.assigneeId !== row.userId) return { skip: "La tâche a été réassignée avant l'envoi." };
+  const [assignee] = await tx.select({ name: user.name }).from(user).where(eq(user.id, row.userId));
   const due = t.dueAt ? `\nÉchéance : ${t.dueAt.toISOString().slice(0, 10)}` : "";
   const brief = t.brief.trim();
   const excerpt = brief ? `\n\n${brief.length > 600 ? `${brief.slice(0, 600)}…` : brief}` : "";
@@ -162,6 +187,7 @@ async function assignmentMessage(tx: Tx, row: DispatchRow): Promise<Message> {
     template: "task-assigned",
     subject: `[Studio] Nouvelle tâche · ${t.title}`,
     body: `Une tâche vous a été assignée : ${t.title}\nProduit : ${t.product}${due}${excerpt}`,
+    groupText: `Nouvelle tâche pour ${assignee?.name?.trim() || "un membre de l'équipe"} : ${t.title}\nProduit : ${t.product}${due}`,
     path: `/tasks/${row.taskId}`,
   };
 }

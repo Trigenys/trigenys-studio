@@ -78,8 +78,8 @@ export async function runScheduledAlerts(env: Bindings): Promise<{ reconcile: Re
   const db = createDb(env.HYPERDRIVE.connectionString);
   const reconcile = await reconcileAlerts({ db, tuning: alertTuning(env) });
   console.log("alerts", JSON.stringify(reconcile));
-  const { email } = createIntegrations(env);
-  const notify = await dispatchNotifications({ db, mailer: email, webAppUrl: webAppUrl(env) });
+  const { email, whatsapp } = createIntegrations(env);
+  const notify = await dispatchNotifications({ db, mailer: email, whatsapp, webAppUrl: webAppUrl(env) });
   console.log("notifications", JSON.stringify(notify));
   return { reconcile, notify };
 }

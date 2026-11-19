@@ -31,19 +31,38 @@ export type AssignmentChange = {
   actorId: string;
 };
 
-export async function queueAssignmentNotice(tx: Tx, change: AssignmentChange): Promise<boolean> {
+// The e-mail to the assignee is always queued; the team group message only
+// when the event is listed in WHATSAPP_NOTIFY_EVENTS (ADR 0014).
+export async function queueAssignmentNotice(tx: Tx, change: AssignmentChange, channels: readonly NotificationChannel[] = ["email"]): Promise<boolean> {
   const { assigneeId } = change;
   if (!assigneeId || assigneeId === change.previousAssigneeId || assigneeId === change.actorId) return false;
+  const base = `${change.taskId}:${assigneeId}:${change.version}`;
   const inserted = await tx
     .insert(notificationDispatch)
-    .values({
-      kind: "task_assigned",
-      taskId: change.taskId,
-      userId: assigneeId,
-      priority: "p2",
-      dedupKey: `task_assigned:${change.taskId}:${assigneeId}:${change.version}`,
-    })
+    .values(
+      channels.map((channel) => ({
+        kind: "task_assigned" as const,
+        taskId: change.taskId,
+        userId: assigneeId,
+        channel,
+        priority: "p2" as const,
+        // The e-mail key predates the channels and stays unchanged.
+        dedupKey: channel === "email" ? `task_assigned:${base}` : `task_assigned:${channel}:${base}`,
+      })),
+    )
     .onConflictDoNothing({ target: notificationDispatch.dedupKey })
     .returning({ id: notificationDispatch.id });
   return inserted.length > 0;
+}
+
+export const NOTIFICATION_CHANNELS = ["email", "whatsapp"] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+const GROUP_EVENTS = ["task_assigned"] as const;
+type GroupEvent = (typeof GROUP_EVENTS)[number];
+
+// Channels for an event: e-mail always, plus the group chat when configured.
+// Unknown names in the list are ignored rather than failing the request.
+export function notificationChannels(env: { WHATSAPP_NOTIFY_EVENTS?: string }, event: GroupEvent): NotificationChannel[] {
+  const listed = (env.WHATSAPP_NOTIFY_EVENTS ?? "").split(",").map((s) => s.trim());
+  return listed.includes(event) ? ["email", "whatsapp"] : ["email"];
 }
