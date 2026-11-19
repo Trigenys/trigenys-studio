@@ -440,3 +440,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - `POST /api/auth/sign-in/magic-link` → 200 `{"status":true}` ; health 200. Un e-mail réel est parti vers l'adresse de l'utilisatrice.
 - Prochaine étape : connexion de l'utilisatrice, `bootstrap-local.sql` avec son e-mail (console Neon), connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail + WhatsApp (cron 5 min).
 - PR #50 (passation) toujours ouverte, à fusionner.
+
+## 2026-11-19 15:31 — Premier admin en production (PR #53)
+
+- Lien magique OK en prod ; le compte connecté n'a aucun rôle (Forbidden). Le premier admin ne passe pas par l'API, et seul `appfactory-infrastructure.yml` obtient la base (liste blanche OIDC AppFactory, `src/auth.ts` `authorizeDatabaseLeaseClaims`).
+- PR #53 : entrée `admin_email` sur le dispatch du workflow → `npm run db:bootstrap-admin` (admin + 3 produits, idempotent, audit `admin.bootstrap`).
+- Après merge : `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=<e-mail>`, puis recharger /today.
+- Ensuite : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), Tiffany `operator`, assignation test.
