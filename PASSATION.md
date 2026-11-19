@@ -308,3 +308,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #43 (assignation notifiée via Trigenys Notify) fusionnée en squash sur `main` (8510ca6), branche supprimée. CI verte après relance de mobile-ios (504 réseau sur setup-java, sans lien avec le code).
 - Session liée en cours : route WhatsApp générique dans `Trigenys/trigenys-notify` (local_91df471b). Ensuite, ajouter le canal WhatsApp côté Studio dans une PR séparée.
 - Verrous de déploiement inchangés : appfactory#185, compte Cloudflare, APPFACTORY_RELEASE_TOKEN. Suite possible : OAuth 2.1 sur le serveur MCP pour les connecteurs ChatGPT / claude.ai.
+
+## 2026-11-19 08:39 — Fusion Notify #61 demandée, bloquée par un conflit
+
+- Accord du commanditaire pour fusionner Trigenys/trigenys-notify#61 (route WhatsApp générique). CI verte, mais GitHub refuse : conflit avec main de Notify.
+- Résolution confiée à la session Notify (local_91df471b) : mise à jour de la branche, tests, puis fusion en squash. Message en attente de prise en charge.
+- Ensuite : canal WhatsApp côté Studio (PR séparée). Déploiement toujours bloqué par Trigenys/appfactory#185, le compte Cloudflare et APPFACTORY_RELEASE_TOKEN.
