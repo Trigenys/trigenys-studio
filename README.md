@@ -46,8 +46,9 @@ npm run generate -w packages/contracts    # régénère le client TypeScript
 3. **Lancer** : `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="<URI>" npm run dev -w services/api`
    (Worker, 8787) puis `npm run dev` (web, 5173 ; si Vite choisit un autre port, l'ajouter à
    `AUTH_TRUSTED_ORIGINS` dans `.dev.vars`). `GET /health?deep=true` doit répondre `"database":"ok"`.
-   Toutes les intégrations sont en `mock` : rien ne part vers Buffer, le CMS ou un fournisseur
-   d'e-mail.
+   Les intégrations externes sont en `mock` : rien ne part vers Buffer, le CMS ou un fournisseur
+   d'e-mail. Les médias utilisent le simulateur R2 local de Wrangler (`VISUALS`), qui conserve
+   les fichiers entre les requêtes ; il n'accède pas au bucket de production.
 4. **Se connecter** : sur `http://localhost:5173`, demander un lien magique ; le lien est écrit
    dans la console du Worker (`[mock-mailer]`), l'ouvrir dans le navigateur.
 5. **Premier admin et produits** : aucun rôle ni produit n'existe au départ, et l'interface
@@ -62,7 +63,7 @@ npm run generate -w packages/contracts    # régénère le client TypeScript
 
 ### API en local
 
-`npm run dev -w services/api` démarre le Worker avec wrangler. Les intégrations sont en mode `mock` par défaut (`INTEGRATION_<X>_MODE`). Pour la base, exporter `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` (branche Neon de développement ou Postgres local, voir « Tester l'application en local ») ; aucune URI n'est commise. La CI vérifie que `openapi.json` et `schema.d.ts` sont à jour par rapport au code.
+`npm run dev -w services/api` démarre le Worker avec wrangler. Les intégrations externes sont en mode `mock` par défaut (`INTEGRATION_<X>_MODE`) ; les médias utilisent R2 simulé localement pour rester lisibles entre les requêtes. Pour la base, exporter `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` (branche Neon de développement ou Postgres local, voir « Tester l'application en local ») ; aucune URI n'est commise. La CI vérifie que `openapi.json` et `schema.d.ts` sont à jour par rapport au code.
 
 Authentification (Better Auth, tables dans Neon via Drizzle) : passkeys et magic link, sans mot de passe ; les clients natifs utilisent le jeton `set-auth-token` en `Authorization: Bearer`. Variables : `AUTH_SECRET` (secret Worker, 32 caractères minimum, jamais commis), `AUTH_BASE_URL`, `AUTH_TRUSTED_ORIGINS`, `PASSKEY_RP_ID`/`PASSKEY_RP_NAME`. En mode `INTEGRATION_EMAIL_MODE=mock`, le lien magique est écrit dans les logs du Worker.
 
@@ -88,6 +89,11 @@ de `services/api/wrangler.production.jsonc`).
 | `/health?deep=true` | Santé du Worker et de la base |
 | `/openapi.json` | Contrat OpenAPI 3.1 de l'API REST (client TypeScript : `packages/contracts`) |
 | `/mcp` | Serveur MCP (Streamable HTTP sans état, `POST`) |
+
+Les logos et visuels sont conservés dans le bucket privé R2 `trigenys-studio-media`, lié au
+Worker sous `VISUALS`. Le workflow d'infrastructure le provisionne via AppFactory avant la
+release et vérifie que son domaine public géré est désactivé. Les fichiers restent servis
+par l'API avec les droits du compte connecté (ADR 0017).
 
 ### Jeton d'accès (API et MCP)
 

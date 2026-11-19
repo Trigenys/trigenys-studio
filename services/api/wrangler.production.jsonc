@@ -47,9 +47,8 @@
     "WHATSAPP_NOTIFY_EVENTS": "task_assigned",
     "INTEGRATION_WHATSAPP_MODE": "live",
     "NOTIFY_WHATSAPP_BASE_URL": "",
-    // No R2 binding yet: media stays in mock mode until the AppFactory
-    // private-media recipe (bucket trigenys-studio-media) is enabled.
-    "INTEGRATION_MEDIA_MODE": "mock",
+    // Logos and rendered files must outlive requests and Worker restarts.
+    "INTEGRATION_MEDIA_MODE": "live",
     "AUTH_BASE_URL": "https://trigenys-studio-api.lawrynnjennifer.workers.dev",
     // Web app origin(s), comma-separated; empty until the web app is deployed.
     "AUTH_TRUSTED_ORIGINS": "https://trigenys-studio-api.lawrynnjennifer.workers.dev",
@@ -60,5 +59,10 @@
   // Hyperdrive id in a temporary copy at deploy time; the file is never rewritten.
   "hyperdrive": [
     { "binding": "HYPERDRIVE", "id": "appfactory-managed-hyperdrive" }
+  ],
+  // Created privately by AppFactory's private-media recipe before release.
+  // Files are served only by the API after session and product authorization.
+  "r2_buckets": [
+    { "binding": "VISUALS", "bucket_name": "trigenys-studio-media" }
   ]
 }
