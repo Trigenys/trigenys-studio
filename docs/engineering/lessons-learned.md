@@ -144,3 +144,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Avant une preuve e2e destinée à une PR : vérifier qu'aucun serveur n'occupe le port e2e (`netstat -ano | grep 5190`) ou lancer avec `CI=1` pour forcer un serveur neuf ; comparer le nombre total de tests exécutés au nombre attendu (116 aujourd'hui) et traiter un écart comme un échec. Revue : un `aria-label` sur un élément porteur de texte visible doit commencer par ce texte.
 
 **Leçon généralisée** — Un vert obtenu contre un serveur dont on ne contrôle pas la version n'est pas une preuve ; la preuve inclut le périmètre exécuté (nombre de tests) et l'état servi.
+
+### LESSON-STUDIO-2026-010 — Une preuve de build dans un checkout installé ne prouve pas le build de la recette
+
+**Contexte** — PR #48 : `npm run check` de `services/api` construit aussi `apps/web` (`build:web`) pour que la recette AppFactory embarque la web app dans le Worker.
+
+**Failure / near miss** — Après fusion, le Workers Build `trigenys-studio-api` échoue (`CLOUDFLARE_WORKERS_BUILD_FAILED`, runs 44534058093 et 44534087291) ; la production reste sur la version précédente. La preuve locale (`npm run check`, `wrangler deploy --dry-run`) était verte.
+
+**Cause racine** — La recette lance `npm install` depuis `/services/api` : npm n'installe alors que ce workspace. Les dépendances de `apps/web` (`vite`, `@vitejs/plugin-react`, types React, lien `@trigenys/studio-contracts`) manquaient. Le checkout local avait tout le monorepo installé à la racine et masquait l'écart.
+
+**Résolution** — `build:web` installe d'abord le workspace web (`npm install --workspace @trigenys/studio-web`, no-op s'il est déjà installé, lockfile inchangé) puis le construit. Reproduit puis validé dans un clone neuf à `bf8a179`.
+
+**Prévention** — Toute modification de la recette de build (scripts appelés par `npm run check`) se prouve dans un clone neuf, en rejouant la commande exacte de la recette depuis son `rootDirectory` (`npm install --ignore-scripts --no-audit --no-fund && npm run check` dans `services/api`), pas dans le checkout de travail.
+
+**Leçon généralisée** — Une preuve de build vaut pour l'environnement où elle tourne ; reproduire l'état initial de la cible (clone neuf, même répertoire, même commande) avant de conclure.

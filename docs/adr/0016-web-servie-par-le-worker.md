@@ -23,7 +23,8 @@ n'était déployée nulle part, et Notify n'accepte que des liens https vers une
   et `/openapi.json` ne vont jamais à l'app (rappels Better Auth, MCP, sondes).
   Le repli SPA natif de Cloudflare seul a été écarté : en preuve locale il renvoyait
   `index.html` à un `fetch('/tasks/…')`.
-- **Build dans la recette** : `npm run check` construit aussi la web app (`build:web`), seule
+- **Build dans la recette** : `npm run check` installe puis construit aussi la web app (`build:web` ;
+  la recette n'installe que le workspace `services/api`), seule
   étape exécutée par la recette AppFactory ; `wrangler deploy` embarque `apps/web/dist`.
 - **Notifications en direct** : `INTEGRATION_EMAIL_MODE=live`, `INTEGRATION_WHATSAPP_MODE=live`,
   `WHATSAPP_NOTIFY_EVENTS=task_assigned`, base Notify
