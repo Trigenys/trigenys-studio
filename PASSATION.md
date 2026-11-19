@@ -460,3 +460,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - #54 mergée. Run 44548071813 (dispatch `admin_email`) vert : « role granted, products created: 3 » ; release Worker verte.
 - Prochaine étape : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), puis Tiffany `operator` via `POST /roles`, assignation test (e-mail + WhatsApp « Trigenys Comm »).
 - PR #50 (passation) toujours ouverte.
+
+## 2026-11-19 17:01 — E-mails HTML aux couleurs du Studio (PR #55)
+
+- #55 mergée (8535ce3) : `services/api/src/email/layout.ts` (gabarit adapté de roadmapmentor, styles inline, accent #7f2044) + `templates.ts` (lien magique, tâche assignée, alerte → sujet/texte/HTML). `Mail.html` optionnel ; l'adaptateur Notify garde `toHtml(text)` en repli. 205 tests verts.
+- Déploiement : dispatch `appfactory-infrastructure.yml --ref main`, run 44561237371 (résultat à vérifier).
+- Prochaine étape : connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail HTML + WhatsApp « Trigenys Comm » (cron 5 min).
+- PR #50 (passation) toujours ouverte.
