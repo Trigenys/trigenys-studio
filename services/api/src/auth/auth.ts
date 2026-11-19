@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { bearer, magicLink } from "better-auth/plugins";
 import type { Db } from "../db/client.ts";
 import * as schema from "../db/schema.ts";
+import { magicLinkEmail } from "../email/templates.ts";
 import type { Bindings } from "../env.ts";
 import type { Mailer } from "../integrations/types.ts";
 
@@ -75,12 +76,7 @@ export function createAuth(db: Db, mailer: Mailer, config: AuthConfig) {
       magicLink({
         expiresIn: 60 * 15,
         sendMagicLink: async ({ email, url }) => {
-          await mailer.send({
-            to: email,
-            template: "magic-link",
-            subject: "Votre lien de connexion Trigenys Studio",
-            text: `Connectez-vous avec ce lien (valable 15 minutes) : ${url}`,
-          });
+          await mailer.send({ to: email, template: "magic-link", ...magicLinkEmail(url, email) });
         },
       }),
       passkey({ rpID: config.rpID, rpName: config.rpName, origin: config.trustedOrigins }),

@@ -3,6 +3,7 @@ import { recordAudit } from "../auth/audit.ts";
 import type { Db, Tx } from "../db/client.ts";
 import { alert, notificationDispatch, product, task, user, type AlertKind, type AlertPriority } from "../db/schema.ts";
 import type { GroupMessenger, Mail, Mailer } from "../integrations/types.ts";
+import { alertEmail, taskAssignedEmail, type RenderedMail } from "../email/templates.ts";
 import { backoffSeconds } from "../publishing/dispatch.ts";
 import { PRIORITY_LABELS } from "./rules.ts";
 
@@ -31,7 +32,7 @@ export type NotifyReport = { claimed: number; sent: number; retried: number; fai
 type DispatchRow = typeof notificationDispatch.$inferSelect;
 
 type Delivery =
-  | { channel: "email"; to: string; template: Mail["template"]; subject: string; text: string }
+  | { channel: "email"; to: string; template: Mail["template"]; subject: string; text: string; html: string }
   | { channel: "whatsapp"; text: string; link: string; linkLabel: string };
 
 type Claimed = { row: DispatchRow; delivery: Delivery };
@@ -79,7 +80,7 @@ export async function dispatchNotifications(options: NotifyOptions): Promise<Not
     let error: string | null = null;
     try {
       if (d.channel === "whatsapp") await whatsapp!.send({ text: d.text, link: d.link, linkLabel: d.linkLabel, key });
-      else await mailer.send({ to: d.to, template: d.template, subject: d.subject, text: d.text, key });
+      else await mailer.send({ to: d.to, template: d.template, subject: d.subject, text: d.text, html: d.html, key });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -131,13 +132,7 @@ async function claim(
   } else {
     const [u] = await tx.select({ email: user.email }).from(user).where(eq(user.id, row.userId));
     if (!u?.email) return skip("Le destinataire n'a pas d'adresse e-mail.", "skipped");
-    delivery = {
-      channel: "email",
-      to: u.email,
-      template: message.template,
-      subject: message.subject,
-      text: `${message.body}\n\nÀ traiter dans le Studio : ${link}`,
-    };
+    delivery = { channel: "email", to: u.email, template: message.template, ...message.email(link, u.email) };
   }
 
   const attempts = row.attempts + 1;
@@ -149,7 +144,9 @@ async function claim(
 }
 
 // `groupText` is what the team group reads: no e-mail address, no brief.
-type Message = { template: Mail["template"]; subject: string; body: string; groupText: string; path: string } | { skip: string };
+type Message =
+  | { template: Mail["template"]; email: (link: string, recipient: string) => RenderedMail; groupText: string; path: string }
+  | { skip: string };
 
 async function alertMessage(tx: Tx, row: DispatchRow): Promise<Message> {
   if (!row.alertId) return { skip: "La notification ne référence aucune alerte." };
@@ -161,8 +158,8 @@ async function alertMessage(tx: Tx, row: DispatchRow): Promise<Message> {
   if (a.state !== "open") return { skip: `L'alerte a été ${a.state === "resolved" ? "résolue" : "acquittée"} avant l'envoi.` };
   return {
     template: "alert",
-    subject: `[Studio] ${PRIORITY_LABELS[a.priority as AlertPriority]} · ${a.title}`,
-    body: `${a.title}\n\n${a.detail}`,
+    email: (link, recipient) =>
+      alertEmail({ priorityLabel: PRIORITY_LABELS[a.priority as AlertPriority], title: a.title, detail: a.detail, link, recipient }),
     groupText: `Alerte ${PRIORITY_LABELS[a.priority as AlertPriority]} : ${a.title}\n${a.detail}`,
     path: alertPath(a.kind as AlertKind, a.taskId),
   };
@@ -180,13 +177,11 @@ async function assignmentMessage(tx: Tx, row: DispatchRow): Promise<Message> {
   if (!t) return { skip: "La tâche n'existe plus." };
   if (t.assigneeId !== row.userId) return { skip: "La tâche a été réassignée avant l'envoi." };
   const [assignee] = await tx.select({ name: user.name }).from(user).where(eq(user.id, row.userId));
-  const due = t.dueAt ? `\nÉchéance : ${t.dueAt.toISOString().slice(0, 10)}` : "";
-  const brief = t.brief.trim();
-  const excerpt = brief ? `\n\n${brief.length > 600 ? `${brief.slice(0, 600)}…` : brief}` : "";
+  const dueDate = t.dueAt ? t.dueAt.toISOString().slice(0, 10) : null;
+  const due = dueDate ? `\nÉchéance : ${dueDate}` : "";
   return {
     template: "task-assigned",
-    subject: `[Studio] Nouvelle tâche · ${t.title}`,
-    body: `Une tâche vous a été assignée : ${t.title}\nProduit : ${t.product}${due}${excerpt}`,
+    email: (link, recipient) => taskAssignedEmail({ title: t.title, product: t.product, dueDate, brief: t.brief, link, recipient }),
     groupText: `Nouvelle tâche pour ${assignee?.name?.trim() || "un membre de l'équipe"} : ${t.title}\nProduit : ${t.product}${due}`,
     path: `/tasks/${row.taskId}`,
   };
