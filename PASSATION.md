@@ -336,3 +336,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Session WAHA de Notify sur le VPS : `trigenys-test` (conteneur trigenys-waha, port 3000), compte « Trigenys Group », WORKING. Aucun groupe « Studio Comm » n'existe encore.
 - Bloquant : le propriétaire crée le groupe « Studio Comm » sur son téléphone et y ajoute le compte « Trigenys Group » et Tiffany. Ensuite : relever l'id @g.us (lecture WAHA), PR Notify (wrangler.production.jsonc, entrée trigenys-studio enabled + groupe).
 - Limites : le Studio n'a pas encore d'origine HTTPS publique (AUTH_TRUSTED_ORIGINS = localhost), donc allowedLinkOrigins reste vide et aucun lien ne part ; secret Studio et test réel impossibles avant déploiement (Trigenys/appfactory#185).
+
+## 2026-11-19 09:16 — Groupe WhatsApp créé, PR Notify #73
+
+- Groupe réel : « Trigenys Comm » (120363414787082587@g.us, session trigenys-test, 3 membres, créé 2026-11-19 08:08 UTC).
+- Trigenys/trigenys-notify#73 ouverte (worktree ../trigenys-notify-wa-studio, branche feat/whatsapp-studio-group) : entrée trigenys-studio activée, allowedLinkOrigins vide. Tests Notify 146/146, check backend OK.
+- Restant : merge #73 ; clé partagée (WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY côté Notify = NOTIFY_WHATSAPP_INGEST_KEY côté Studio) à poser par le propriétaire au déploiement du Studio ; vars Studio INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned ; origine HTTPS du Studio à ajouter dans allowedLinkOrigins.
