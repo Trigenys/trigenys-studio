@@ -416,3 +416,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Branche `feat/notifications-live` (ADR 0016) : web app servie par le Worker (binding `ASSETS`, aiguillage navigation/fetch dans `src/web/spa.ts`), `npm run check` construit la web, modes e-mail/WhatsApp `live`, `WEB_APP_URL`/`AUTH_TRUSTED_ORIGINS` = origine du Worker.
 - Piège : le repli SPA natif Cloudflare renvoie `index.html` à un `fetch('/tasks/…')` (chemins partagés web/API) → aiguillage dans le Worker.
 - Après merge des deux PR : `gh workflow run appfactory-infrastructure.yml --ref main`, puis assignation test (1 WhatsApp groupe « Trigenys Comm » + 1 e-mail).
+
+## 2026-11-19 14:39 — Release Worker : correctif du build web
+
+- Fusionnées : Trigenys/trigenys-notify#74 (Workers Build vert), #48 (web servie par le Worker, notifications en direct), #49 (correctif).
+- #48 : release du Worker en échec (`CLOUDFLARE_WORKERS_BUILD_FAILED`, runs 44534058093 / 44534087291) : la recette n'installe que `services/api`, `build:web` manquait des dépendances de `apps/web`. #49 : `build:web` installe d'abord le workspace web (LESSON-STUDIO-2026-010).
+- Run dispatch 44535574464 sur 8e3656b : vert (base + release Worker). Le push de #49 ne déclenche pas le workflow (`package.json` hors filtres).
+- Prod vérifiée 14:43 : navigation `/` et `/tasks/x` → HTML Studio ; fetch `/tasks/x` → 401 problem+json ; `/health` email/whatsapp `live` ; `/health/ready` 200 ; Notify `/health` 200.
+- Ensuite : test d'assignation : connexion de l'utilisateur par lien magique, `bootstrap-local.sql` dans la console Neon, connexion de Tiffany, rôle `operator` via `POST /roles`, assignation d'une tâche → e-mail + message « Trigenys Comm » (cron `*/5`).
+- Sous Windows, `openapi:check` peut signaler un faux écart (CRLF) : vérifier avec `git diff --ignore-cr-at-eol`.
