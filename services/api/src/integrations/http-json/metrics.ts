@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import type { MetricSnapshot, MetricTarget, MetricsProvider } from "../types.ts";
-import { UpstreamError, upstreamJson } from "../upstream.ts";
+import { UpstreamError, upstreamJson, defaultFetch } from "../upstream.ts";
 
 // Generic HTTP JSON metrics source (ADR 0010, contract v1): the SEO Monitor,
 // Insight or a thin proxy exposes `GET {base}/v1/metrics?kind=&ref=` with a
@@ -25,7 +25,7 @@ export class HttpJsonMetrics implements MetricsProvider {
   constructor(options: HttpJsonMetricsOptions) {
     this.base = options.baseUrl.replace(/\/+$/, "");
     this.token = options.token;
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
   }
 
   async fetch(target: MetricTarget): Promise<MetricSnapshot | null> {

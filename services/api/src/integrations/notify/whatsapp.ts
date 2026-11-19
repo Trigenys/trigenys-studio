@@ -1,5 +1,5 @@
 import type { GroupMessage, GroupMessenger } from "../types.ts";
-import { UpstreamError } from "../upstream.ts";
+import { UpstreamError, defaultFetch } from "../upstream.ts";
 
 // Live group messenger backed by Trigenys Notify (generic WhatsApp route,
 // contract v1): `POST {base}/v1/dispatch/{project}/whatsapp` with the
@@ -36,7 +36,7 @@ export class NotifyWhatsApp implements GroupMessenger {
     this.base = options.baseUrl.replace(/\/+$/, "");
     this.ingestKey = options.ingestKey;
     this.project = options.project ?? "trigenys-studio";
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
     this.now = options.now ?? (() => new Date());
   }
 

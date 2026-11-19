@@ -1,5 +1,5 @@
 import type { ListQuery, Radar, RadarTopic } from "../types.ts";
-import { UpstreamError, upstreamJson } from "../upstream.ts";
+import { UpstreamError, upstreamJson, defaultFetch } from "../upstream.ts";
 
 // Editorial OS radar, read through the operator API
 // (`GET {base}/api/operator/runs`, bearer token). A proposal is a workflow
@@ -35,7 +35,7 @@ export class EditorialOsRadar implements Radar {
   constructor(options: EditorialOsRadarOptions) {
     this.token = options.token;
     this.base = options.baseUrl.replace(/\/+$/, "");
-    this.fetchImpl = options.fetch ?? fetch;
+    this.fetchImpl = options.fetch ?? defaultFetch;
   }
 
   async listProposals(query: ListQuery): Promise<RadarTopic[]> {
