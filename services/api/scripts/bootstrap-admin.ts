@@ -1,0 +1,24 @@
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { bootstrapAdmin, BootstrapError } from "../src/admin/bootstrap.ts";
+import * as schema from "../src/db/schema.ts";
+
+// Run by the infrastructure workflow with the leased DATABASE_URL (never
+// printed) and the ADMIN_EMAIL dispatch input.
+const url = process.env.DATABASE_URL;
+const email = process.env.ADMIN_EMAIL ?? "";
+if (!url) {
+  console.error("DATABASE_URL is missing.");
+  process.exit(1);
+}
+
+const client = postgres(url, { max: 1, fetch_types: false });
+try {
+  const report = await bootstrapAdmin(drizzle({ client, schema }), email);
+  console.log(`Admin bootstrap: role ${report.granted ? "granted" : "already present"}, products created: ${report.productsCreated}.`);
+} catch (e) {
+  console.error(e instanceof BootstrapError ? e.message : "Admin bootstrap failed (database error).");
+  process.exitCode = 1;
+} finally {
+  await client.end({ timeout: 5 });
+}

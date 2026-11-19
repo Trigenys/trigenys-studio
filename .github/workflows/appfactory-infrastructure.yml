@@ -24,6 +24,11 @@ on:
       - ".appfactory/worker.json"
       - "services/api/wrangler.production.jsonc"
   workflow_dispatch:
+    inputs:
+      admin_email:
+        description: "Grant the admin role to this already signed-in account and seed the products (idempotent; leave empty to skip)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -138,6 +143,13 @@ jobs:
       - run: npm install --ignore-scripts
       - name: Apply Drizzle migrations
         run: npm run db:migrate --workspace services/api
+      # The first admin cannot be granted through the API (no admin yet), and
+      # only this workflow may lease the database: hence an explicit dispatch.
+      - name: Bootstrap the first admin
+        if: github.event_name == 'workflow_dispatch' && inputs.admin_email != ''
+        env:
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+        run: npm run db:bootstrap-admin --workspace services/api
 
   worker:
     name: Production Worker release
