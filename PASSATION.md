@@ -476,3 +476,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Limites connues : pas d'OAuth 2.1 MCP (connecteurs claude.ai), pas d'écran admin rôles/utilisateurs (pistes : `POST /roles` par e-mail).
 - Prochaine étape inchangée : Tiffany se connecte, envoie son `userId` (`/me`), rôle `operator`, assignation test.
 - PR #50 (passation) toujours ouverte ; `main` local en retard, à réaligner.
+
+## 2026-11-19 18:53 — Identité commune : bascule vers trigenys-auth
+
+- Décision utilisateur : l'équipe (e-mail, téléphone) n'est saisie qu'une fois, dans `Trigenys/trigenys-auth` (OIDC/OAuth 2.1), pas dans la SQLite de Sign (qui mélange équipe et signataires externes).
+- Session dédiée « Déployer trigenys-auth et y reprendre l'équipe » (local_2a1ff2a9-…) : Trigenys/trigenys-auth#9 (import d'équipe idempotent, CLI migrate, clients OAuth `trigenys-studio`/`trigenys-sign`, port 8793). DNS `auth.trigenys.com` chez Spaceship à pointer sur 15.235.90.215 ; déploiement VPS sur accord explicite. Question en cours : connexion par lien magique au lieu du mot de passe dans trigenys-auth.
+- Côté Studio, à faire après : Studio client OIDC de trigenys-auth (rôles via claim `roles`), OAuth 2.1 du MCP adossé à trigenys-auth ; l'octroi de rôle par e-mail est mis en attente.
+- Tiffany : en attente de trigenys-auth.
