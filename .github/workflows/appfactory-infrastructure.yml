@@ -7,6 +7,11 @@ name: AppFactory infrastructure
 # 2. AppFactory leases that URL to this workflow only (OIDC, main, push or
 #    dispatch), masked in the logs;
 # 3. drizzle-kit applies the pending migrations (journal-based, idempotent).
+# Then the production Worker trigenys-studio-api (declared in .appfactory/worker.json):
+# 4. first run only, AppFactory bootstraps the Worker and its Workers Builds trigger;
+# 5. AppFactory binds the managed Hyperdrive (profile trigenys-studio-production);
+# 6. AppFactory releases the Worker with the Hyperdrive id and verifies the binding.
+#    Reruns converge: existing Worker, Hyperdrive and generated secrets are reused.
 
 on:
   push:
@@ -16,6 +21,8 @@ on:
       - "services/api/drizzle.config.ts"
       - "services/api/src/db/migration-credentials.ts"
       - ".github/workflows/appfactory-infrastructure.yml"
+      - ".appfactory/worker.json"
+      - "services/api/wrangler.production.jsonc"
   workflow_dispatch:
 
 permissions:
@@ -131,3 +138,72 @@ jobs:
       - run: npm install --ignore-scripts
       - name: Apply Drizzle migrations
         run: npm run db:migrate --workspace services/api
+
+  worker:
+    name: Production Worker release
+    needs: database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Reconcile the Worker and its Hyperdrive binding through AppFactory
+        uses: actions/github-script@v8
+        env:
+          EXPECTED_WORKER_NAME: trigenys-studio-api
+          WORKER_MARKER_PRESENT: ${{ hashFiles('.appfactory/worker-infrastructure.json') != '' }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const repository = context.repo.owner + '/' + context.repo.repo;
+            const request = JSON.parse(fs.readFileSync('.appfactory/worker.json', 'utf8'));
+            if (request.repository !== repository) throw new Error('.appfactory/worker.json targets another repository.');
+
+            async function call(path, body) {
+              const token = await core.getIDToken('appfactory-api');
+              core.setSecret(token);
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 20 * 60 * 1000);
+              let response;
+              try {
+                response = await fetch(process.env.APPFACTORY_URL + path, {
+                  method: 'POST',
+                  headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body),
+                  signal: controller.signal
+                });
+              } finally {
+                clearTimeout(timeout);
+              }
+              let payload;
+              try { payload = await response.json(); }
+              catch { throw new Error('AppFactory ' + path + ' returned invalid JSON (HTTP ' + response.status + ').'); }
+              if (!response.ok || payload.status !== 'PROVISIONED') {
+                const code = typeof payload.error === 'string' ? payload.error.replace(/[^A-Z0-9_]/g, '').slice(0, 80) : 'UNKNOWN';
+                throw new Error('AppFactory ' + path + ' blocked: ' + code + ' (HTTP ' + response.status + ').');
+              }
+              return payload.infrastructure;
+            }
+
+            if (process.env.WORKER_MARKER_PRESENT !== 'true') {
+              const bootstrap = await call('/infrastructure/worker', request);
+              core.summary.addRaw('Worker bootstrapped: ' + bootstrap.worker.name + ' (created: ' + Boolean(bootstrap.worker.created) + ').\n');
+            }
+
+            const hyperdrive = await call('/infrastructure/hyperdrive', { repository });
+            if (hyperdrive.worker !== process.env.EXPECTED_WORKER_NAME) {
+              throw new Error('AppFactory bound Hyperdrive to an unexpected Worker.');
+            }
+            core.summary.addRaw('Hyperdrive bound (created: ' + Boolean(hyperdrive.hyperdrive && hyperdrive.hyperdrive.created) + ').\n');
+
+            const release = await call('/infrastructure/worker', request);
+            if (release.worker.name !== process.env.EXPECTED_WORKER_NAME ||
+                release.worker.runtime !== 'typescript-wrangler') {
+              throw new Error('AppFactory released an unexpected Worker.');
+            }
+            if (!release.release || release.release.state !== 'ready' || !release.release.hyperdrive.configured) {
+              throw new Error('Worker release is not ready (state: ' + (release.release && release.release.state) + ').');
+            }
+            core.summary.addRaw('Worker ' + release.worker.name + ' ready at ' + release.worker.url +
+              ' (generated secrets: ' + release.secrets.generated.length + ', preserved: ' + release.secrets.preserved.length + ').\n');
+            await core.summary.write();

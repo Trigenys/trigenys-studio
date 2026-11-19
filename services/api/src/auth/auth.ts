@@ -25,9 +25,13 @@ export class AuthConfigError extends Error {
 // Reads the auth configuration from Worker bindings and fails early with an
 // actionable message instead of letting Better Auth boot in a weak state.
 export function authConfigFromEnv(env: Bindings): AuthConfig {
-  const secret = env.AUTH_SECRET;
+  // Production: TRIGENYS_STUDIO_AUTH_SECRET is generated once by AppFactory
+  // (repository-prefixed secret, never rotated silently). AUTH_SECRET wins when set.
+  const secret = env.AUTH_SECRET || env.TRIGENYS_STUDIO_AUTH_SECRET;
   if (!secret || secret.length < 32) {
-    throw new AuthConfigError("AUTH_SECRET must be set (Worker secret, at least 32 characters)");
+    throw new AuthConfigError(
+      "AUTH_SECRET (or TRIGENYS_STUDIO_AUTH_SECRET) must be set (Worker secret, at least 32 characters)",
+    );
   }
   const baseURL = env.AUTH_BASE_URL;
   if (!baseURL) throw new AuthConfigError("AUTH_BASE_URL must be set (public origin of this API)");

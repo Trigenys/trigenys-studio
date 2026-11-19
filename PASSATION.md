@@ -379,3 +379,17 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Studio : workflow `.github/workflows/appfactory-infrastructure.yml` (OIDC → `/infrastructure/neon` → bail `/infrastructure/database-lease` → `drizzle-kit migrate`), `drizzle.config.ts` impose TLS `verify-full` (le bail retire `sslmode`). Tests API : 180/180 en série (en parallèle sous Windows, 6 fichiers tombent en timeout PGlite, déjà le cas avant).
 - Ordre d'activation (propriétaire) : fusionner appfactory#192 et redéployer AppFactory ; fusionner la PR Studio ; `gh workflow run appfactory-infrastructure.yml -R Trigenys/trigenys-studio --ref main` ; attendre `PROVISIONED`, puis `ALREADY_CONFIGURED` au second run.
 - Ensuite (phase B) : PR AppFactory U3 (rootDirectory `/services/api`, injection Hyperdrive dans `wrangler*.jsonc`), puis release du Worker, puis secrets e-mail/WhatsApp et test d'assignation.
+
+## 2026-11-19 10:29 — Base de production provisionnée
+
+- Fusionnées : Trigenys/appfactory#192 (Workers Builds appfactory-api vert) puis Trigenys/trigenys-studio#45.
+- Workflow `appfactory-infrastructure.yml` : run push 44496548344 vert (base `trigenys_studio` + rôle créés, bail OIDC, `drizzle-kit migrate` : migrations appliquées) ; rerun dispatch 44496712033 vert (idempotent).
+- Verrou suivant : phase B, PR AppFactory U3 (rootDirectory `/services/api` autorisé, injection de l'id Hyperdrive dans `wrangler*.jsonc`), puis release du Worker `trigenys-studio-api` ; ensuite secrets e-mail/WhatsApp et test d'assignation. Alternative sans déploiement : OAuth 2.1 MCP.
+- Nettoyage possible : worktrees `../appfactory-neon-studio` et `../trigenys-notify-wa-studio`.
+
+## 2026-11-19 10:58 — Phase B : release du Worker de production
+
+- AppFactory U3 : Trigenys/appfactory#193 (racine `/services/api`, injection Hyperdrive JSONC), en attente de fusion.
+- Branche `feat/production-worker-release` : job `worker` dans `appfactory-infrastructure.yml`, `.appfactory/worker.json`, `wrangler.production.jsonc` (id `appfactory-managed-hyperdrive`), secret généré `TRIGENYS_STUDIO_AUTH_SECRET`, script `check`, ADR 0015.
+- Preuves locales : YAML + scripts `node --check` OK, `npm run check` OK, `test/auth-config.test.ts` 3/3, dry-run Wrangler avec injection Hyperdrive OK.
+- Ordre : fusionner #193 (build appfactory-api vert) → fusionner la PR Studio → le workflow publie le Worker → vérifier `/health`. Ensuite secrets e-mail/WhatsApp + modes `live` + test d'assignation.
