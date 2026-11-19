@@ -50,7 +50,7 @@ export class NotifyMailer implements Mailer {
       occurredAt: occurredAt.toISOString(),
       expiresAt: new Date(occurredAt.getTime() + TTL_MS[mail.template]).toISOString(),
       recipient: mail.to,
-      message: { subject: singleLine(mail.subject), html: toHtml(mail.text), text: mail.text },
+      message: { subject: singleLine(mail.subject), html: mail.html ?? toHtml(mail.text), text: mail.text },
     };
     let res: Response;
     try {
