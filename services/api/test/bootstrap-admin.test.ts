@@ -39,3 +39,16 @@ describe("bootstrapAdmin", () => {
     for (const p of DEFAULT_PRODUCTS) expect(script).toContain(`('${p.id}', '${p.name}')`);
   });
 });
+
+// LESSON-STUDIO-2026-013: the leased production URL has no sslmode, so every
+// script reaching DATABASE_URL must go through migrationCredentials (TLS).
+describe("scripts reaching the leased database", () => {
+  it("connect through migrationCredentials, never the raw URL", async () => {
+    const { readdir } = await import("node:fs/promises");
+    for (const file of await readdir("./scripts")) {
+      if (!file.endsWith(".ts")) continue;
+      const source = await readFile(`./scripts/${file}`, "utf8");
+      if (source.includes("DATABASE_URL")) expect(source, file).toContain("migrationCredentials(");
+    }
+  });
+});

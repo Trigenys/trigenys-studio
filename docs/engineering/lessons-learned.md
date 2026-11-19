@@ -186,3 +186,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — `test/worker-config.test.ts` échoue si le drapeau disparaît d'une des configs. Toute intégration Worker → Worker du compte passe par ce drapeau ou par une service binding, décidé dans l'ADR qui l'introduit.
 
 **Leçon généralisée** — Un appel entre deux services du même fournisseur n'est pas un appel « Internet » ordinaire : vérifier les règles de routage interne du fournisseur avant d'annoncer une intégration, et tester l'appel réel depuis le runtime cible.
+
+### LESSON-STUDIO-2026-013 — Une URL de base prêtée sans `sslmode` ouvre une connexion en clair
+
+**Contexte** — Premier admin de production par `npm run db:bootstrap-admin` dans le workflow d'infrastructure (PR #53), juste après les migrations du même job.
+
+**Failure / near miss** — Les migrations passent, le bootstrap échoue aussitôt : « Admin bootstrap failed (database error) », sans autre indice.
+
+**Cause racine** — Le bail AppFactory renvoie une URL sans `sslmode`. `drizzle.config.ts` passe par `migrationCredentials` (TLS `verify-full` imposé hors local) ; le nouveau script donnait l'URL brute à `postgres()`, qui tente alors une connexion sans TLS que Neon refuse. Le message d'erreur masqué entièrement (pour ne pas fuiter l'URL) cachait aussi la cause.
+
+**Résolution** — Le script construit sa connexion avec `migrationCredentials(url)` ; en cas d'échec il affiche le code SQLSTATE, jamais le message ni l'URL.
+
+**Prévention** — `test/bootstrap-admin.test.ts` échoue si un script de `scripts/` qui lit `DATABASE_URL` n'utilise pas `migrationCredentials`.
+
+**Leçon généralisée** — Tout nouveau point d'entrée vers une ressource déjà durcie réutilise le helper de connexion existant, pas la valeur brute ; et une erreur expurgée garde un identifiant sûr (code) pour rester diagnosticable.
