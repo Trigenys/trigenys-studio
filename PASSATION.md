@@ -447,3 +447,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #53 : entrée `admin_email` sur le dispatch du workflow → `npm run db:bootstrap-admin` (admin + 3 produits, idempotent, audit `admin.bootstrap`).
 - Après merge : `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=<e-mail>`, puis recharger /today.
 - Ensuite : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), Tiffany `operator`, assignation test.
+
+## 2026-11-19 15:38 — Bootstrap admin : #53 mergée, échec TLS, correctif #54 ouvert
+
+- #53 mergée (1d10457). Dispatch 44545011912 avec `admin_email` : migrations OK, bootstrap KO (URL du bail sans `sslmode` → connexion en clair refusée). Aucune écriture.
+- PR #54 (ouverte, non mergée) : script via `migrationCredentials` (TLS), code SQLSTATE en erreur, garde-fou test, LESSON-STUDIO-2026-013.
+- Prochaine étape : merger #54 (accord explicite requis), puis `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=jennifer@trigenys.com`, vérifier le job, recharger /today.
+- Ensuite : gabarit HTML des e-mails, Tiffany `operator`, assignation test.
