@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "provider": "cloudflare-hyperdrive",
+  "repository": "Trigenys/trigenys-studio",
+  "workerName": "trigenys-studio-api",
+  "profile": "trigenys-studio-production",
+  "hyperdriveName": "trigenys-studio-production",
+  "binding": "HYPERDRIVE",
+  "id": "150810ae2fb74422a483eaff06ab9f97"
+}
