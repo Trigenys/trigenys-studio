@@ -454,3 +454,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #54 (ouverte, non mergée) : script via `migrationCredentials` (TLS), code SQLSTATE en erreur, garde-fou test, LESSON-STUDIO-2026-013.
 - Prochaine étape : merger #54 (accord explicite requis), puis `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=jennifer@trigenys.com`, vérifier le job, recharger /today.
 - Ensuite : gabarit HTML des e-mails, Tiffany `operator`, assignation test.
+
+## 2026-11-19 15:53 — Premier admin en production : fait
+
+- #54 mergée. Run 44548071813 (dispatch `admin_email`) vert : « role granted, products created: 3 » ; release Worker verte.
+- Prochaine étape : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), puis Tiffany `operator` via `POST /roles`, assignation test (e-mail + WhatsApp « Trigenys Comm »).
+- PR #50 (passation) toujours ouverte.
