@@ -314,3 +314,8 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Accord du commanditaire pour fusionner Trigenys/trigenys-notify#61 (route WhatsApp générique). CI verte, mais GitHub refuse : conflit avec main de Notify.
 - Résolution confiée à la session Notify (local_91df471b) : mise à jour de la branche, tests, puis fusion en squash. Message en attente de prise en charge.
 - Ensuite : canal WhatsApp côté Studio (PR séparée). Déploiement toujours bloqué par Trigenys/appfactory#185, le compte Cloudflare et APPFACTORY_RELEASE_TOKEN.
+
+## 2026-11-19 08:44 — Notify #61 fusionnée
+
+- Trigenys/trigenys-notify#61 (route WhatsApp générique par projet) fusionnée en squash (f794c02) après résolution du conflit par la session Notify ; CI verte.
+- Prochaine étape : canal WhatsApp côté Studio (PR séparée), groupe « Studio Comm » à créer et déclarer côté Notify. Déploiement toujours bloqué par Trigenys/appfactory#185, le compte Cloudflare et APPFACTORY_RELEASE_TOKEN.
