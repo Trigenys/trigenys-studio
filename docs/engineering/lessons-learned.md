@@ -172,3 +172,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Un adaptateur ne stocke jamais le `fetch` global brut : il utilise `defaultFetch`. Revue : `grep -rn "?? fetch\b" services/api/src` doit rester vide. Tout passage d'une intégration en `live` se teste en production sur un envoi réel avant d'annoncer la mise en service.
 
 **Leçon généralisée** — Un chemin par défaut que les tests remplacent toujours par une doublure n'est pas testé ; reproduire dans au moins un test la contrainte du runtime cible.
+
+### LESSON-STUDIO-2026-012 — Un Worker ne joint pas un autre Worker `workers.dev` du même compte par `fetch`
+
+**Contexte** — Même mise en service de l'e-mail `live`, juste après le correctif LESSON-STUDIO-2026-011.
+
+**Failure / near miss** — Toujours HTTP 500 sur `/api/auth/sign-in/magic-link` ; `wrangler tail` : `UpstreamError: trigenys-notify-mailer: HTTP 404`. La même requête depuis un poste répond bien (401 sans clé) : la route Notify existe.
+
+**Cause racine** — Studio et Notify sont deux Workers `*.workers.dev` du même compte Cloudflare. Un `fetch` global de l'un vers l'autre est refusé par la plateforme (erreur 1042, vue comme un 404) sauf avec le drapeau `global_fetch_strictly_public` ou une service binding. Invisible hors du runtime de production : ni Node ni les tests ne passent par le réseau Cloudflare.
+
+**Résolution** — `global_fetch_strictly_public` ajouté à `compatibility_flags` (production et local) ; l'URL Notify reste configurable, aucun changement d'adaptateur.
+
+**Prévention** — `test/worker-config.test.ts` échoue si le drapeau disparaît d'une des configs. Toute intégration Worker → Worker du compte passe par ce drapeau ou par une service binding, décidé dans l'ADR qui l'introduit.
+
+**Leçon généralisée** — Un appel entre deux services du même fournisseur n'est pas un appel « Internet » ordinaire : vérifier les règles de routage interne du fournisseur avant d'annoncer une intégration, et tester l'appel réel depuis le runtime cible.

@@ -4,7 +4,9 @@
   "name": "trigenys-studio-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
-  "compatibility_flags": ["nodejs_compat"],
+  // global_fetch_strictly_public: Notify is another workers.dev Worker of the same
+  // account; without it a plain fetch to it gets 404 (Cloudflare error 1042).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "upload_source_maps": true,
   // Publishing outbox: hands due deliveries to the provider and polls their status.
   "triggers": { "crons": ["*/5 * * * *"] },
