@@ -1,5 +1,6 @@
 import { createApp } from "./app.ts";
 import type { Bindings } from "./env.ts";
+import { withWebApp } from "./web/spa.ts";
 import { runScheduledAlerts, runScheduledDispatch, runScheduledMetrics } from "./publishing/scheduled.ts";
 
 const app = createApp();
@@ -13,6 +14,6 @@ const dispatchThenAlerts = async (env: Bindings) => {
 };
 
 export default {
-  fetch: app.fetch,
+  fetch: withWebApp<Bindings, ExecutionContext>(app.fetch),
   scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.allSettled([dispatchThenAlerts(env), runScheduledMetrics(env)])),
 } satisfies ExportedHandler<Bindings>;

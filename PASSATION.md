@@ -400,3 +400,19 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Run 44520132859 : job base vert ; job Worker déployé avec Hyperdrive mais bloqué `WORKER_DATABASE_NOT_READY` : la sonde AppFactory attend `database_configured` sur `/health`, sinon `GET /health/ready` avec `status: ready`. Studio n'avait pas cette route.
 - Correctif : branche `fix/health-ready-probe` (`/health/ready` : ping base réel, 200 ready / 503 not_ready), contrat OpenAPI + client régénérés. Après fusion, le push relance le workflow (marqueurs présents → pas de ré-amorçage).
 - Local `main` diverge d'origin (commit de passation e776437 jamais poussé) : à réaligner par l'utilisateur.
+
+## 2026-11-19 13:36 — Worker de production prêt + état de la couverture
+
+- Correction de l'entrée 13:08 : le push de #47 ne relance PAS le workflow (filtres `paths` limités aux migrations/infra) ; relance manuelle `gh workflow run appfactory-infrastructure.yml --ref main`.
+- Run 44524985008 : jobs base + Worker verts. `GET /health/ready` en prod → 200 `{"status":"ready","database":"ok"}`. Intégrations toutes en `mock`.
+- Couverture : API (47 chemins OpenAPI) et web (10 pages) couvrent les parcours discovery ; mobile = jour + tâche + connexion ; pas d'UI admin (rôles, règles/SLA, audit) ; web non déployée ; pas de R2 ; MCP sans OAuth.
+- Prochaine étape (chemin Tiffany) : secrets Notify e-mail/WhatsApp sur le Worker, `INTEGRATION_EMAIL_MODE`/`INTEGRATION_WHATSAPP_MODE=live`, `WHATSAPP_NOTIFY_EVENTS=task_assigned`, allowedLinkOrigins côté Notify, assignation test.
+- Toujours à faire par l'utilisateur : réaligner `main` local (e776437 non poussé), supprimer `feat/neon-production-database`.
+
+## 2026-11-19 13:52 — Notifications en direct + web servie par le Worker
+
+- Clés produit Notify posées en secrets (jamais affichées) : côté Notify `EMAIL_TRIGENYS_STUDIO_INGEST_KEY`, `WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY` (régénérée) ; côté Studio `NOTIFY_EMAIL_INGEST_KEY`, `NOTIFY_WHATSAPP_INGEST_KEY`. Health 200 des deux Workers après pose.
+- Trigenys/trigenys-notify#74 : `allowedLinkOrigins` Studio = origine du Worker Studio + projet e-mail `trigenys-studio`.
+- Branche `feat/notifications-live` (ADR 0016) : web app servie par le Worker (binding `ASSETS`, aiguillage navigation/fetch dans `src/web/spa.ts`), `npm run check` construit la web, modes e-mail/WhatsApp `live`, `WEB_APP_URL`/`AUTH_TRUSTED_ORIGINS` = origine du Worker.
+- Piège : le repli SPA natif Cloudflare renvoie `index.html` à un `fetch('/tasks/…')` (chemins partagés web/API) → aiguillage dans le Worker.
+- Après merge des deux PR : `gh workflow run appfactory-infrastructure.yml --ref main`, puis assignation test (1 WhatsApp groupe « Trigenys Comm » + 1 e-mail).

@@ -10,7 +10,7 @@ explicite**, et **aucune release sans revue**.
 |---|---|---|---|---|
 | `local` | Vite `localhost:5173` | `wrangler dev` `localhost:8787` | branche Neon de dev (`.dev.vars`) | chaque développeur |
 | `staging` | Cloudflare Pages (preview) | Worker `trigenys-studio-api-staging` | branche Neon `staging` | CI après merge sur `main`, **non activé** |
-| `production` | Cloudflare Pages | Worker `trigenys-studio-api` | branche Neon `main` | release approuvée, **non activé** |
+| `production` | servie par le Worker (ADR 0016) | Worker `trigenys-studio-api` | base `trigenys_studio` (AppFactory) | workflow `appfactory-infrastructure.yml` |
 
 État : seuls `local` et la CI existent. La base de production est provisionnée par AppFactory
 (U1, `appfactory#185` / PR `appfactory#192`) : le workflow `appfactory-infrastructure.yml`
@@ -55,7 +55,8 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `METRICS_TOKEN` | Worker secret (`wrangler secret put METRICS_TOKEN`) | secret | bearer du contrat HTTP JSON des mesures (ADR 0010) ; requis quand `INTEGRATION_METRICS_MODE=live` ; jamais journalisé |
 | `METRICS_BASE_URL`, `METRICS_REFRESH_MINUTES`, `METRICS_BATCH` | `wrangler.jsonc` | config | base du fournisseur de mesures (SEO Monitor ou proxy), intervalle minimal de rafraîchissement, cibles par passage ; en mode `mock` aucun relevé n'est écrit |
 | `ALERT_APPROVAL_HOURS`, `ALERT_STALL_HOURS`, `ALERT_DUE_SOON_HOURS` | `wrangler.jsonc` | config | seuils des alertes (ADR 0011) : attente d'approbation (24 h), inactivité en préparation (72 h), échéance proche qui passe une alerte en P1 (24 h) ; le cron enchaîne outbox → réconciliation → notifications |
-| `WEB_APP_URL` | `wrangler.jsonc` | config | base des liens vers les tâches dans les e-mails d'alerte ; sans elle aucun e-mail d'alerte ne part (audité `skipped`) |
+| `WEB_APP_URL` | `wrangler.jsonc` | config | base des liens vers les tâches (e-mails, WhatsApp) ; sans elle aucune notification ne part (audité `skipped`). En production : origine du Worker, qui sert aussi la web app (ADR 0016) |
+| `ASSETS` | binding static assets (`wrangler.production.jsonc`) | config | build `apps/web/dist` produit par `npm run check` ; chargements de page → app, `fetch` → API (`src/web/spa.ts`) |
 | `NOTIFY_EMAIL_INGEST_KEY` | Worker secret (`wrangler secret put NOTIFY_EMAIL_INGEST_KEY`) | secret | clé produit de Trigenys Notify (en-tête `x-notify-auth`) ; requise quand `INTEGRATION_EMAIL_MODE=live` ; jamais journalisée. Côté Notify : secret `EMAIL_TRIGENYS_STUDIO_INGEST_KEY` (même valeur) et projet `trigenys-studio` dans `EMAIL_PROJECTS_JSON` (ADR 0013) |
 | `NOTIFY_EMAIL_BASE_URL`, `NOTIFY_PROJECT` | `wrangler.jsonc` | config | base du Worker Notify et identifiant de projet (`trigenys-studio`) ; liens magiques, alertes et assignations passent par la route e-mail générique |
 | `NOTIFY_WHATSAPP_INGEST_KEY` | Worker secret (`wrangler secret put NOTIFY_WHATSAPP_INGEST_KEY`) | secret | clé produit WhatsApp de Trigenys Notify (`x-notify-auth`) ; requise quand `INTEGRATION_WHATSAPP_MODE=live` ; jamais journalisée. Côté Notify : secret `WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY` (même valeur) et projet activé dans `WHATSAPP_PROJECTS_JSON` (ADR 0014) |

@@ -8,6 +8,8 @@ export type IntegrationMode = "mock" | "live";
 export type Bindings = {
   SERVICE_NAME?: string;
   HYPERDRIVE?: Hyperdrive;
+  // Built web app (apps/web/dist), bound in production only (ADR 0016).
+  ASSETS?: Fetcher;
   // Better Auth. AUTH_SECRET is a Worker secret (>= 32 chars), never a var.
   AUTH_SECRET?: string;
   // Same role, generated and owned by AppFactory in production.
