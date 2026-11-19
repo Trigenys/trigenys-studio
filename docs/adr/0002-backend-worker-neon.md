@@ -26,5 +26,8 @@ Option 2 avec les sous-choix ci-dessus. RBAC déclaratif (`role_assignment(user,
 ## Conséquences
 
 - Dépendance assumée à Cloudflare, cohérente avec le reste de la plateforme Trigenys ; documentée ici comme dérogation au principe Agnostic.
-- Contribution amont U1 (cible Neon dans `APPFACTORY_NEON_TARGETS`) bloquante avant le premier déploiement ; U3 (variante Worker du blueprint `typescript-api`) à remonter une fois Studio stabilisé.
+- Contribution amont U1 bloquante avant le premier déploiement. Mise à jour 2026-11-19 : réalisée comme cible
+  Neon **scellée** dans AppFactory (Trigenys/appfactory#192, modèle Editorial OS) plutôt que via
+  `APPFACTORY_NEON_TARGETS` ; base `trigenys_studio` sur le projet Neon partagé, URL gardée en secret
+  du Worker `appfactory-api`, migrations par bail OIDC (`.github/workflows/appfactory-infrastructure.yml`) ; U3 (variante Worker du blueprint `typescript-api`) à remonter une fois Studio stabilisé.
 - Risque : compatibilité Better Auth / postgres.js / Hyperdrive sur Workers (`nodejs_compat`). Spike de connexion bout en bout prévu à l'incrément 2 ; plan B : Auth.js ou implémentation maison sur les mêmes tables.

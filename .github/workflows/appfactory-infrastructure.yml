@@ -1,0 +1,133 @@
+name: AppFactory infrastructure
+
+# Production database for the Studio API, without any credential in GitHub:
+# 1. AppFactory reconciles the sealed Neon target (role + database created on
+#    the first run, then ALREADY_CONFIGURED) and keeps the URL as a secret of
+#    its own Worker;
+# 2. AppFactory leases that URL to this workflow only (OIDC, main, push or
+#    dispatch), masked in the logs;
+# 3. drizzle-kit applies the pending migrations (journal-based, idempotent).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/api/drizzle/**"
+      - "services/api/drizzle.config.ts"
+      - "services/api/src/db/migration-credentials.ts"
+      - ".github/workflows/appfactory-infrastructure.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: appfactory-infrastructure-production
+  cancel-in-progress: false
+
+env:
+  APPFACTORY_URL: ${{ vars.APPFACTORY_URL || 'https://appfactory-api.lawrynnjennifer.workers.dev' }}
+  EXPECTED_DATABASE: trigenys_studio
+  EXPECTED_WORKER: appfactory-api
+  EXPECTED_SECRET: HYPERDRIVE_DATABASE_URL__TRIGENYS_STUDIO_PRODUCTION
+
+jobs:
+  database:
+    name: Neon database and migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Reconcile the Neon database through AppFactory
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const token = await core.getIDToken('appfactory-api');
+            core.setSecret(token);
+            const repository = context.repo.owner + '/' + context.repo.repo;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 60000);
+            let response;
+            try {
+              response = await fetch(process.env.APPFACTORY_URL + '/infrastructure/neon', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repository }),
+                signal: controller.signal
+              });
+            } finally {
+              clearTimeout(timeout);
+            }
+            let payload;
+            try { payload = await response.json(); }
+            catch { throw new Error('AppFactory Neon provisioning returned invalid JSON (HTTP ' + response.status + ').'); }
+            if (!response.ok || !['PROVISIONED', 'ALREADY_CONFIGURED'].includes(payload.status)) {
+              const code = typeof payload.error === 'string' ? payload.error.replace(/[^A-Z0-9_]/g, '').slice(0, 80) : 'UNKNOWN';
+              throw new Error('AppFactory Neon provisioning blocked: ' + code + ' (HTTP ' + response.status + ').');
+            }
+            if (payload.repository !== repository ||
+                payload.database !== process.env.EXPECTED_DATABASE ||
+                payload.worker !== process.env.EXPECTED_WORKER ||
+                payload.secretName !== process.env.EXPECTED_SECRET) {
+              throw new Error('AppFactory returned a Neon provisioning target mismatch.');
+            }
+            core.summary.addRaw('AppFactory Neon provisioning: ' + payload.status +
+              ' (role created: ' + Boolean(payload.createdRole) + ', database created: ' + Boolean(payload.createdDatabase) + ').\n');
+            await core.summary.write();
+
+      - name: Lease the database connection from AppFactory
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const token = await core.getIDToken('appfactory-api');
+            core.setSecret(token);
+            const repository = context.repo.owner + '/' + context.repo.repo;
+            let payload = null;
+            let lastHttp = 0;
+            const attempts = 8;
+            for (let attempt = 0; attempt < attempts; attempt++) {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 15000);
+              let response;
+              try {
+                response = await fetch(process.env.APPFACTORY_URL + '/infrastructure/database-lease', {
+                  method: 'POST',
+                  headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ repository }),
+                  signal: controller.signal
+                });
+              } finally {
+                clearTimeout(timeout);
+              }
+              lastHttp = response.status;
+              try { payload = await response.json(); }
+              catch { throw new Error('AppFactory database lease returned invalid JSON (HTTP ' + response.status + ').'); }
+              if (response.ok && payload.status === 'READY') break;
+              if (payload.error !== 'DATABASE_LEASE_NOT_CONFIGURED' || attempt + 1 === attempts) break;
+              // A Worker secret created by the previous step can take a few
+              // seconds to reach the AppFactory runtime.
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            if (payload?.status !== 'READY') {
+              const code = typeof payload?.error === 'string' ? payload.error.replace(/[^A-Z0-9_]/g, '').slice(0, 80) : 'UNKNOWN';
+              throw new Error('AppFactory database lease unavailable: ' + code + ' (HTTP ' + lastHttp + ').');
+            }
+            if (payload.repository !== repository ||
+                payload.database !== process.env.EXPECTED_DATABASE ||
+                typeof payload.databaseUrl !== 'string' ||
+                !payload.databaseUrl.startsWith('postgresql://')) {
+              throw new Error('AppFactory returned an unexpected database lease.');
+            }
+            core.setSecret(payload.databaseUrl);
+            core.exportVariable('DATABASE_URL', payload.databaseUrl);
+            core.summary.addRaw('Database connection leased from AppFactory; no credential stored in GitHub.\n');
+            await core.summary.write();
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm install --ignore-scripts
+      - name: Apply Drizzle migrations
+        run: npm run db:migrate --workspace services/api

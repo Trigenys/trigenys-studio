@@ -330,3 +330,52 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - Trigenys/trigenys-studio#44 (canal WhatsApp de groupe, ADR 0014) fusionnée en squash (c7504f5), branche distante supprimée.
 - Prochaine étape, sur accord : groupe « Studio Comm » + id @g.us, clé partagée Notify/Studio, PR Notify activant trigenys-studio dans WHATSAPP_PROJECTS_JSON, vars Studio (INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned). Déploiement toujours bloqué par Trigenys/appfactory#185.
+
+## 2026-11-19 09:06 — Activation WhatsApp : en attente du groupe
+
+- Session WAHA de Notify sur le VPS : `trigenys-test` (conteneur trigenys-waha, port 3000), compte « Trigenys Group », WORKING. Aucun groupe « Studio Comm » n'existe encore.
+- Bloquant : le propriétaire crée le groupe « Studio Comm » sur son téléphone et y ajoute le compte « Trigenys Group » et Tiffany. Ensuite : relever l'id @g.us (lecture WAHA), PR Notify (wrangler.production.jsonc, entrée trigenys-studio enabled + groupe).
+- Limites : le Studio n'a pas encore d'origine HTTPS publique (AUTH_TRUSTED_ORIGINS = localhost), donc allowedLinkOrigins reste vide et aucun lien ne part ; secret Studio et test réel impossibles avant déploiement (Trigenys/appfactory#185).
+
+## 2026-11-19 09:16 — Groupe WhatsApp créé, PR Notify #73
+
+- Groupe réel : « Trigenys Comm » (120363414787082587@g.us, session trigenys-test, 3 membres, créé 2026-11-19 08:08 UTC).
+- Trigenys/trigenys-notify#73 ouverte (worktree ../trigenys-notify-wa-studio, branche feat/whatsapp-studio-group) : entrée trigenys-studio activée, allowedLinkOrigins vide. Tests Notify 146/146, check backend OK.
+- Restant : merge #73 ; clé partagée (WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY côté Notify = NOTIFY_WHATSAPP_INGEST_KEY côté Studio) à poser par le propriétaire au déploiement du Studio ; vars Studio INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned ; origine HTTPS du Studio à ajouter dans allowedLinkOrigins.
+
+## 2026-11-19 09:22 — Clé WhatsApp partagée (en cours, côté propriétaire)
+
+- Le secret Notify se pose depuis ../trigenys-notify-wa-studio : `npx wrangler secret put WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY --config backend/wrangler.production.jsonc` (depuis le Studio : « Worker name missing »).
+- Génération sous Windows PowerShell 5.1 : `RandomNumberGenerator::Fill` n'existe pas, utiliser `[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)`.
+- Inchangé : merge Trigenys/trigenys-notify#73 en attente d'accord ; main du Studio (c4685ed, 5b5bbad) à pousser par le propriétaire ; vars Studio et allowedLinkOrigins au déploiement.
+
+## 2026-11-19 09:27 — Clé WhatsApp posée côté Notify
+
+- Secret WHATSAPP_TRIGENYS_STUDIO_INGEST_KEY posé sur le Worker trigenys-notify-staging-api (64 car., base64url, généré par script, jamais affiché ; présent dans `wrangler secret list`). Copie remise au propriétaire via le presse-papiers pour son gestionnaire de mots de passe.
+- Reste : merge Trigenys/trigenys-notify#73 (accord du propriétaire) ; push de main du Studio ; au déploiement du Studio, même valeur en NOTIFY_WHATSAPP_INGEST_KEY + INTEGRATION_WHATSAPP_MODE=live + WHATSAPP_NOTIFY_EVENTS=task_assigned, origine HTTPS dans allowedLinkOrigins, test d'envoi.
+
+## 2026-11-19 09:30 — PR Notify #73 fusionnée, déploiement Notify à faire
+
+- Trigenys/trigenys-notify#73 fusionnée (3e7d09d). Le Worker n'est pas déployé automatiquement : dernier déploiement de code 2026-11-19 07:45 UTC (= #61), donc seul #73 manque.
+- Déploiement refusé à l'agent (garde-fou prod) : le propriétaire lance depuis ../trigenys-notify-wa-studio, après `git fetch origin && git checkout --detach origin/main`, puis dans backend/ : `npx wrangler deploy --config wrangler.production.jsonc`.
+- Ensuite : push de main du Studio ; au déploiement du Studio, NOTIFY_WHATSAPP_INGEST_KEY (même valeur), INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned, origine HTTPS dans allowedLinkOrigins, test d'envoi.
+
+## 2026-11-19 09:33 — Notify déployé avec le groupe Studio
+
+- Worker trigenys-notify-staging-api déployé par le propriétaire depuis origin/main 3e7d09d (version c8eb1228-aa92-4b3d-b5e3-536f5dca8f38) ; WHATSAPP_PROJECTS_JSON contient trigenys-studio. Route /v1/dispatch/trigenys-studio/whatsapp sans clé → 401 UNAUTHORIZED.
+- Côté Notify, tout est prêt. Le worktree ../trigenys-notify-wa-studio est en HEAD détachée sur origin/main (branche feat supprimée) : peut être retiré.
+- Reste (Studio) : push de main ; au déploiement (bloqué par Trigenys/appfactory#185), NOTIFY_WHATSAPP_INGEST_KEY = valeur gardée par le propriétaire, INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned, puis PR Notify pour l'origine HTTPS du Studio dans allowedLinkOrigins, et test d'une assignation.
+
+## 2026-11-19 09:39 — Point d'étape après activation Notify
+
+- Tout ce qui reste pour la prestataire (e-mail + WhatsApp réels) dépend du déploiement du Studio. Verrous : Trigenys/appfactory#185 (projectId/branchId Neon à fournir par le propriétaire), APPFACTORY_RELEASE_TOKEN. Le compte Cloudflare existe déjà (celui de Notify, account 28007ba3…) : à confirmer comme cible du Worker trigenys-studio-api.
+- Autre chantier disponible sans déploiement : OAuth 2.1 sur le serveur MCP (connecteurs distants ChatGPT / claude.ai, ADR 0012).
+- Choix demandé au propriétaire : débloquer le déploiement ou lancer l'OAuth MCP.
+
+## 2026-11-19 10:06 — Base Neon de production via AppFactory (#185)
+
+- Correction de l'entrée 09:39 : aucun identifiant Neon n'est à fournir. Le Studio suit le schéma Editorial OS : cible Neon **scellée** dans AppFactory (projet partagé `little-frog-93793324`, branche `br-twilight-star-b2orr8hw`, base `trigenys_studio`, rôle `trigenys_studio_owner`, créés au premier run), URL gardée en secret `HYPERDRIVE_DATABASE_URL__TRIGENYS_STUDIO_PRODUCTION` du Worker `appfactory-api`.
+- AppFactory : PR Trigenys/appfactory#192 (branche `feat/neon-studio-target`, worktree `../appfactory-neon-studio`). tsc OK ; 231/236 tests, les 5 échecs existent déjà sur `origin/main`.
+- Studio : workflow `.github/workflows/appfactory-infrastructure.yml` (OIDC → `/infrastructure/neon` → bail `/infrastructure/database-lease` → `drizzle-kit migrate`), `drizzle.config.ts` impose TLS `verify-full` (le bail retire `sslmode`). Tests API : 180/180 en série (en parallèle sous Windows, 6 fichiers tombent en timeout PGlite, déjà le cas avant).
+- Ordre d'activation (propriétaire) : fusionner appfactory#192 et redéployer AppFactory ; fusionner la PR Studio ; `gh workflow run appfactory-infrastructure.yml -R Trigenys/trigenys-studio --ref main` ; attendre `PROVISIONED`, puis `ALREADY_CONFIGURED` au second run.
+- Ensuite (phase B) : PR AppFactory U3 (rootDirectory `/services/api`, injection Hyperdrive dans `wrangler*.jsonc`), puis release du Worker, puis secrets e-mail/WhatsApp et test d'assignation.
