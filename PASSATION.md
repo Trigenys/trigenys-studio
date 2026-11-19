@@ -425,3 +425,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Prod vérifiée 14:43 : navigation `/` et `/tasks/x` → HTML Studio ; fetch `/tasks/x` → 401 problem+json ; `/health` email/whatsapp `live` ; `/health/ready` 200 ; Notify `/health` 200.
 - Ensuite : test d'assignation : connexion de l'utilisateur par lien magique, `bootstrap-local.sql` dans la console Neon, connexion de Tiffany, rôle `operator` via `POST /roles`, assignation d'une tâche → e-mail + message « Trigenys Comm » (cron `*/5`).
 - Sous Windows, `openapi:check` peut signaler un faux écart (CRLF) : vérifier avec `git diff --ignore-cr-at-eol`.
+
+## 2026-11-19 15:18 — Lien de connexion : deux causes en production
+
+- Symptôme : « Envoi impossible » sur /login (HTTP 500 sur `/api/auth/sign-in/magic-link`).
+- Cause 1, corrigée par #51 (504cf90, run 44540463496 vert) : le `fetch` global rangé sur l'adaptateur lève « Illegal invocation » sur Workers → `defaultFetch` (LESSON-STUDIO-2026-011).
+- Cause 2, PR #52 ouverte : Studio → Notify, deux Workers `workers.dev` du même compte, `fetch` refusé (404, erreur 1042) → drapeau `global_fetch_strictly_public` (LESSON-STUDIO-2026-012). Le merge déclenche seul le workflow infra (fichier `wrangler.production.jsonc`).
+- Après déploiement de #52 : refaire `POST /api/auth/sign-in/magic-link` (attendu 200), puis connexion utilisatrice, puis assignation test.
+- Main local diverge d'origin/main : travailler sur des branches tirées d'`origin/main`.
