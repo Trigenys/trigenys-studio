@@ -325,3 +325,8 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Trigenys/trigenys-studio#44 ouverte (branche feat/notify-whatsapp) : canal WhatsApp de groupe via la route générique Notify, opt-in `WHATSAPP_NOTIFY_EVENTS=task_assigned` + `INTEGRATION_WHATSAPP_MODE=live` + secret `NOTIFY_WHATSAPP_INGEST_KEY`. ADR 0014.
 - Preuves : typecheck OK, 176 tests verts, build dry-run OK.
 - Activation restante (sur accord) : groupe « Studio Comm » + id @g.us, clé partagée Notify/Studio, PR Notify activant trigenys-studio dans WHATSAPP_PROJECTS_JSON, vars Studio.
+
+## 2026-11-19 09:02 — PR #44 fusionnée
+
+- Trigenys/trigenys-studio#44 (canal WhatsApp de groupe, ADR 0014) fusionnée en squash (c7504f5), branche distante supprimée.
+- Prochaine étape, sur accord : groupe « Studio Comm » + id @g.us, clé partagée Notify/Studio, PR Notify activant trigenys-studio dans WHATSAPP_PROJECTS_JSON, vars Studio (INTEGRATION_WHATSAPP_MODE=live, WHATSAPP_NOTIFY_EVENTS=task_assigned). Déploiement toujours bloqué par Trigenys/appfactory#185.
