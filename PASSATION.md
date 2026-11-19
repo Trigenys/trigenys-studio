@@ -393,3 +393,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Branche `feat/production-worker-release` : job `worker` dans `appfactory-infrastructure.yml`, `.appfactory/worker.json`, `wrangler.production.jsonc` (id `appfactory-managed-hyperdrive`), secret généré `TRIGENYS_STUDIO_AUTH_SECRET`, script `check`, ADR 0015.
 - Preuves locales : YAML + scripts `node --check` OK, `npm run check` OK, `test/auth-config.test.ts` 3/3, dry-run Wrangler avec injection Hyperdrive OK.
 - Ordre : fusionner #193 (build appfactory-api vert) → fusionner la PR Studio → le workflow publie le Worker → vérifier `/health`. Ensuite secrets e-mail/WhatsApp + modes `live` + test d'assignation.
+
+## 2026-11-19 13:08 — Release Worker : sonde de disponibilité
+
+- Fusionnées : Trigenys/appfactory#193 (build appfactory-api vert) puis Trigenys/trigenys-studio#46.
+- Run 44520132859 : job base vert ; job Worker déployé avec Hyperdrive mais bloqué `WORKER_DATABASE_NOT_READY` : la sonde AppFactory attend `database_configured` sur `/health`, sinon `GET /health/ready` avec `status: ready`. Studio n'avait pas cette route.
+- Correctif : branche `fix/health-ready-probe` (`/health/ready` : ping base réel, 200 ready / 503 not_ready), contrat OpenAPI + client régénérés. Après fusion, le push relance le workflow (marqueurs présents → pas de ré-amorçage).
+- Local `main` diverge d'origin (commit de passation e776437 jamais poussé) : à réaligner par l'utilisateur.

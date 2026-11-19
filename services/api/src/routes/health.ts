@@ -33,7 +33,36 @@ const route = createRoute({
   },
 });
 
-export const healthRoutes = new OpenAPIHono<AppEnv>().openapi(route, async (c) => {
+const ReadinessSchema = z
+  .object({
+    status: z.enum(["ready", "not_ready"]),
+    database: z.enum(["ok", "unavailable", "unconfigured"]),
+  })
+  .openapi("Readiness");
+
+// Readiness probe used by the AppFactory release gate: ready only when the
+// Hyperdrive binding exists and the database answers.
+const readyRoute = createRoute({
+  method: "get",
+  path: "/health/ready",
+  tags: ["system"],
+  summary: "Readiness of the API (database reachable)",
+  responses: {
+    200: { description: "Ready", content: { "application/json": { schema: ReadinessSchema } } },
+    503: { description: "Not ready", content: { "application/json": { schema: ReadinessSchema } } },
+  },
+});
+
+export const healthRoutes = new OpenAPIHono<AppEnv>()
+  .openapi(readyRoute, async (c) => {
+    const hyperdrive = c.env.HYPERDRIVE;
+    if (!hyperdrive) return c.json({ status: "not_ready" as const, database: "unconfigured" as const }, 503);
+    const ok = await pingDb(hyperdrive.connectionString).catch(() => false);
+    return ok
+      ? c.json({ status: "ready" as const, database: "ok" as const }, 200)
+      : c.json({ status: "not_ready" as const, database: "unavailable" as const }, 503);
+  })
+  .openapi(route, async (c) => {
   const { deep } = c.req.valid("query");
   let database: z.infer<typeof HealthSchema>["database"] = "unchecked";
   if (deep === "true") {
