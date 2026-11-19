@@ -1,4 +1,49 @@
 export interface paths {
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness of the API (database reachable) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ready */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Readiness"];
+                    };
+                };
+                /** @description Not ready */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Readiness"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -4868,6 +4913,12 @@ export interface components {
                 path: string;
                 message: string;
             }[];
+        };
+        Readiness: {
+            /** @enum {string} */
+            status: "ready" | "not_ready";
+            /** @enum {string} */
+            database: "ok" | "unavailable" | "unconfigured";
         };
         Health: {
             /** @enum {string} */

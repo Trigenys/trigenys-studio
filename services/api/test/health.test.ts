@@ -32,6 +32,21 @@ describe("GET /health", () => {
   });
 });
 
+describe("GET /health/ready", () => {
+  it("is not ready without a Hyperdrive binding", async () => {
+    const res = await app.request("/health/ready", {}, {});
+    expect(res.status).toBe(503);
+    expect(await json(res)).toEqual({ status: "not_ready", database: "unconfigured" });
+  });
+
+  it("is not ready when the database does not answer", async () => {
+    const env = { HYPERDRIVE: { connectionString: "postgres://u:p@127.0.0.1:1/none" } };
+    const res = await app.request("/health/ready", {}, env);
+    expect(res.status).toBe(503);
+    expect(await json(res)).toEqual({ status: "not_ready", database: "unavailable" });
+  });
+});
+
 describe("errors", () => {
   it("returns a problem document on unknown routes", async () => {
     const res = await app.request("/nope", {}, {});

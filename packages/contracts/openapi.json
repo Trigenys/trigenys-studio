@@ -89,6 +89,30 @@
           "status"
         ]
       },
+      "Readiness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable",
+              "unconfigured"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ]
+      },
       "Health": {
         "type": "object",
         "properties": {
@@ -3263,6 +3287,36 @@
     "parameters": {}
   },
   "paths": {
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Readiness of the API (database reachable)",
+        "responses": {
+          "200": {
+            "description": "Ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
