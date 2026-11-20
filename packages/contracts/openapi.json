@@ -243,6 +243,13 @@
               "null"
             ]
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "idp"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -254,6 +261,7 @@
           "role",
           "productId",
           "grantedBy",
+          "source",
           "createdAt"
         ]
       },
@@ -3579,6 +3587,16 @@
           },
           "404": {
             "description": "Unknown assignment",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Assignment managed by Trigenys Auth",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -72,7 +72,11 @@ export const account = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (t) => [index("account_user_id_idx").on(t.userId)],
+  (t) => [
+    index("account_user_id_idx").on(t.userId),
+    // One Studio user per external identity (e.g. Trigenys Auth `sub`).
+    uniqueIndex("account_provider_account_idx").on(t.providerId, t.accountId),
+  ],
 );
 
 export const verification = pgTable(
@@ -118,6 +122,7 @@ export const passkey = pgTable(
 
 export const ROLES = ["admin", "operator", "reviewer"] as const;
 export type Role = (typeof ROLES)[number];
+export const ROLE_SOURCES = ["local", "idp"] as const;
 
 export const roleAssignment = pgTable(
   "role_assignment",
@@ -129,6 +134,10 @@ export const roleAssignment = pgTable(
     role: text("role", { enum: ROLES }).notNull(),
     productId: text("product_id"),
     grantedBy: text("granted_by").references(() => user.id, { onDelete: "set null" }),
+    // "local": granted in the Studio (POST /roles). "idp": copied from the
+    // `roles` claim of Trigenys Auth and reconciled at each connection; only
+    // those rows are ever removed by the reconciliation.
+    source: text("source", { enum: ROLE_SOURCES }).notNull().default("local"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

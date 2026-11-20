@@ -307,6 +307,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
+                /** @description Assignment managed by Trigenys Auth */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
             };
         };
         options?: never;
@@ -4954,6 +4963,8 @@ export interface components {
             role: "admin" | "operator" | "reviewer";
             productId: string | null;
             grantedBy: string | null;
+            /** @enum {string} */
+            source: "local" | "idp";
             /** Format: date-time */
             createdAt: string;
         };
