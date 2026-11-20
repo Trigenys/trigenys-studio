@@ -94,6 +94,15 @@ describe("transport", () => {
     expect(res.headers.get("allow")).toBe("POST");
   });
 
+  it("passes the transport refusals through instead of a 500", async () => {
+    const version = await rpc("tools/list", {}, operator, { "mcp-protocol-version": "1999-01-01" });
+    expect(version.status).toBe(400);
+    expect((await parse(version)).error.message).toContain("Unsupported protocol version");
+    const accept = await rpc("tools/list", {}, operator, { accept: "text/html" });
+    expect(accept.status).toBe(406);
+    expect((await parse(accept)).jsonrpc).toBe("2.0");
+  });
+
   it("initializes statelessly with JSON responses", async () => {
     const res = await rpc(
       "initialize",

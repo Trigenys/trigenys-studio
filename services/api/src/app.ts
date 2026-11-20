@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { AuthConfigError, authConfigFromEnv, createAuth, type AuthConfig } from "./auth/auth.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
 import { oidcConfigFromEnv, oidcVerifierFor, type OidcConfig } from "./auth/oidc.ts";
@@ -81,6 +82,31 @@ export function createApp(deps: AppDeps = {}) {
     if (err instanceof AuthConfigError) {
       console.error(err.name, err.message);
       return problem(503, "Authentication not configured", { instance: c.req.path, detail: err.message });
+    }
+    // Raised with a ready response, e.g. by the MCP transport for a request it
+    // refuses (406, 415, 400 with a JSON-RPC error): pass it on, do not mask it as
+    // a 500. The log keeps the status, the reason and the negotiation headers.
+    if (err instanceof HTTPException) {
+      const res = err.getResponse();
+      void res
+        .clone()
+        .text()
+        .then((body) =>
+          console.warn(
+            "HTTPException",
+            res.status,
+            c.req.method,
+            c.req.path,
+            JSON.stringify({
+              accept: c.req.header("accept") ?? null,
+              contentType: c.req.header("content-type") ?? null,
+              protocolVersion: c.req.header("mcp-protocol-version") ?? null,
+            }),
+            body.slice(0, 500),
+          ),
+        )
+        .catch(() => undefined);
+      return res;
     }
     console.error(err.name, err.message);
     return problem(500, "Internal error", { instance: c.req.path });
