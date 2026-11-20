@@ -630,3 +630,15 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Le conteneur n'a pas été recréé : il est toujours `healthy` et la découverte OIDC publique répond 200.
 - Pour poser la même valeur côté Studio sans l'afficher, la lire par ssh et la passer par pipe à `wrangler secret put DIRECTORY_CLIENT_SECRET`. Accord requis.
 - Suite : fusion et déploiement de auth#19 (révision `feat/directory-members`), puis fusion de studio#62, déploiement Studio, `POST /directory/sync`, et assignation de test à Tiffany.
+
+## 2026-11-20 11:51 — auth#19 en production, secret Studio posé
+
+- Trigenys/trigenys-auth#19 fusionnée (2e63e9e) et déployée sur le VPS.
+  - Sauvegarde `~/backups/trigenys-auth-2026-11-20-1047.sql.gz`.
+  - Plan de migration vide. Image vérifiée, `/health` ok, OIDC 200.
+  - `clients.reconciled` a créé `trigenys-studio-directory`.
+- Secret Worker Studio `DIRECTORY_CLIENT_SECRET` posé par pipe depuis le VPS, jamais affiché.
+- Vérification : jeton `client_credentials` obtenu, annuaire 200, 3 membres (2 admins et Tiffany en `operator`).
+- Piège : en Basic auth, l'id et le secret doivent être encodés (RFC 6749 §2.3.1). Un secret base64 non encodé (+ / =) donne `invalid client_secret`. Le Studio encode déjà (`encodeURIComponent`). `client_secret_post` est refusé pour ce client.
+- Côté Studio, seule Jennifer est assignable aujourd'hui. Tiffany sera créée par la synchro.
+- Suite (accord requis) : fusion de studio#62, déploiement Studio, `POST /directory/sync`, puis assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
