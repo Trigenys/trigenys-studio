@@ -588,3 +588,15 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Trigenys Auth : Tiffany est membre de l'org trigenys mais son e-mail n'est pas vérifié, et aucun appRoleAssignment n'existe pour trigenys-studio (personne).
 - Conséquence : sa première connexion OIDC/MCP serait refusée (403, e-mail non vérifié), et sans rôle elle ne serait pas assignable.
 - Prochaine étape proposée : synchronisation de l'annuaire Trigenys Auth → Studio (membres de l'org → utilisateurs Studio + rôles), puis create_task assigné à Tiffany pour tester e-mail + WhatsApp « Trigenys Comm ».
+
+## 2026-11-20 11:31 — Sync annuaire, 500 du rapport, outils MCP
+
+- **trigenys-auth** : branche `feat/directory-members` (96804567) poussée, sans PR ni déploiement. Annuaire `GET /api/auth/directory/members?org=`, client `trigenys-studio-directory`, scope `directory`. Le secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` doit être dans l'env du VPS **avant** le déploiement (accord requis), puis la même valeur va dans le secret Worker Studio `DIRECTORY_CLIENT_SECRET`.
+- **Studio** : branche `feat/directory-sync` poussée (cron + `POST /directory/sync`, 8 tests ; la suite passe à 230/230). PR à ouvrir.
+- **Studio** : branche `fix/report-and-mcp-tools`.
+  - Cause du 500 de `get_editorial_report` : le driver postgres-js de Drizzle désactive ses sérialiseurs de dates, donc un `Date` comparé à un alias `sql` (`published_at`, `coalesce(sent_at, scheduled_at)`) part en `String(date)` et Postgres le refuse. PGlite l'acceptait.
+  - Correctif : bornes envoyées en ISO `::timestamptz`.
+  - Garde-fou : un logger dans `test/support/harness.ts` fait échouer toute requête qui reçoit un `Date` brut.
+  - Nouveaux outils MCP : list_products, update_task, save_content, list_visual_formats, render_visual, move_task, add_comment.
+- **Lectures vides en prod** : des 200 vides, pas des 403. La base de prod est vide (aucun produit, compte social ni tâche).
+- **Suite** : PR des deux branches → fusion et déploiement sur accord → secrets → assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
