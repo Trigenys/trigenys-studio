@@ -3,6 +3,8 @@ import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { AuthConfigError, authConfigFromEnv, createAuth, type AuthConfig } from "./auth/auth.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
+import { oidcConfigFromEnv, oidcVerifierFor, type OidcConfig } from "./auth/oidc.ts";
+import { protectedResourceRoutes } from "./auth/protected-resource.ts";
 import { createDb, type Db } from "./db/client.ts";
 import type { AppEnv } from "./env.ts";
 import { createIntegrations } from "./integrations/registry.ts";
@@ -50,6 +52,8 @@ export type AppDeps = {
   db?: Db;
   integrations?: Partial<Integrations>;
   authConfig?: AuthConfig;
+  // Trigenys Auth resource-server settings; null disables, undefined reads the env.
+  oidc?: OidcConfig | null;
 };
 
 export function createApp(deps: AppDeps = {}) {
@@ -82,8 +86,12 @@ export function createApp(deps: AppDeps = {}) {
     return problem(500, "Internal error", { instance: c.req.path });
   });
 
+  const oidcConfig = (c: { env: AppEnv["Bindings"] }) =>
+    deps.oidc !== undefined ? deps.oidc : oidcConfigFromEnv(c.env ?? {});
+
   // Public, dependency-free routes first.
   app.route("/", healthRoutes);
+  app.route("/", protectedResourceRoutes(oidcConfig));
   app.doc31("/openapi.json", openApiInfo);
 
   // Everything below needs the database, the auth instance and the session.
@@ -99,6 +107,7 @@ export function createApp(deps: AppDeps = {}) {
     c.set("db", db);
     const config = deps.authConfig ?? authConfigFromEnv(c.env);
     c.set("auth", createAuth(db, integrations.email, config));
+    c.set("oidc", oidcVerifierFor(oidcConfig(c)));
     await next();
   });
 
@@ -115,7 +124,7 @@ export function createApp(deps: AppDeps = {}) {
       },
       credentials: true,
       allowHeaders: ["content-type", "authorization", "idempotency-key", "mcp-protocol-version", "mcp-session-id"],
-      exposeHeaders: ["set-auth-token"],
+      exposeHeaders: ["set-auth-token", "www-authenticate"],
     }),
   );
 

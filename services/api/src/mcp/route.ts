@@ -2,6 +2,7 @@ import { StreamableHTTPTransport } from "@hono/mcp";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { AppEnv } from "../env.ts";
+import { bearerChallenge } from "../auth/protected-resource.ts";
 import { problem } from "../problem.ts";
 import { dispatcherFor, type Fetcher } from "./dispatch.ts";
 import { buildMcpServer } from "./server.ts";
@@ -24,7 +25,7 @@ export function mcpOriginGuard(trustedOrigins: (c: Context<AppEnv>) => readonly 
 export const mcpRequireSession = createMiddleware<AppEnv>(async (c, next) => {
   if (!c.var.principal) {
     const res = problem(401, "Authentication required", { instance: c.req.path });
-    res.headers.set("www-authenticate", 'Bearer realm="trigenys-studio"');
+    res.headers.set("www-authenticate", bearerChallenge(c.var.oidc?.config ?? null, c.var.tokenRejected === true));
     return res;
   }
   await next();

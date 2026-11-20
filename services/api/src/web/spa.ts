@@ -3,7 +3,7 @@
 // is on the request kind, not the path: a browser page load gets the app, any
 // fetch() keeps reaching the API. Paths only the server can answer (Better
 // Auth callbacks, MCP, probes, the contract) never fall to the app.
-const SERVER_ONLY = [/^\/api\//, /^\/mcp(\/|$)/, /^\/health(\/|$)/, /^\/openapi\.json$/];
+const SERVER_ONLY = [/^\/api\//, /^\/mcp(\/|$)/, /^\/health(\/|$)/, /^\/openapi\.json$/, /^\/\.well-known\//];
 
 export function isAppNavigation(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") return false;

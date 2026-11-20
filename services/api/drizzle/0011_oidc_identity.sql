@@ -1,0 +1,2 @@
+ALTER TABLE "role_assignment" ADD COLUMN "source" text DEFAULT 'local' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "account_provider_account_idx" ON "account" USING btree ("provider_id","account_id");

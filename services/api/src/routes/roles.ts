@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, eq, isNull } from "drizzle-orm";
 import { audited } from "../auth/audit.ts";
 import { authorize } from "../auth/middleware.ts";
-import { ROLES, roleAssignment, user } from "../db/schema.ts";
+import { ROLE_SOURCES, ROLES, roleAssignment, user } from "../db/schema.ts";
 import type { AppEnv } from "../env.ts";
 import { ProblemError, ProblemSchema } from "../problem.ts";
 import { RoleGrantSchema } from "./me.ts";
@@ -14,6 +14,8 @@ const RoleAssignmentSchema = z
     role: z.enum(ROLES),
     productId: z.string().nullable(),
     grantedBy: z.string().nullable(),
+    // "idp": copied from Trigenys Auth on each connection; managed there, not here.
+    source: z.enum(ROLE_SOURCES),
     createdAt: z.iso.datetime(),
   })
   .openapi("RoleAssignment");
@@ -87,6 +89,7 @@ const revokeRoute = createRoute({
     401: problemResponse("No valid session"),
     403: problemResponse("Not an admin"),
     404: problemResponse("Unknown assignment"),
+    409: problemResponse("Assignment managed by Trigenys Auth"),
   },
 });
 
@@ -140,6 +143,15 @@ export const roleRoutes = new OpenAPIHono<AppEnv>()
   })
   .openapi(revokeRoute, async (c) => {
     const { id } = c.req.valid("param");
+    const [row] = await c.var.db
+      .select({ source: roleAssignment.source })
+      .from(roleAssignment)
+      .where(eq(roleAssignment.id, id));
+    if (row?.source === "idp") {
+      throw new ProblemError(409, "Assignment managed by Trigenys Auth", {
+        detail: "This role comes from Trigenys Auth; change it there and it is removed on the next connection.",
+      });
+    }
     await audited(
       c.var.db,
       { actor: c.var.principal, action: "role.revoke", resource: { type: "role", id }, requestId: c.var.requestId },
