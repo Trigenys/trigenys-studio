@@ -524,3 +524,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Trigenys/trigenys-auth#17 (branche `feat/chatgpt-redirect-uri`) : URI `https://chatgpt.com/connector_platform_oauth_redirect` ajoutée au client `trigenys-studio` + test `test/production-clients.test.ts` (fichier prod validé avec les règles de production). `npm run check` : 67/67.
 - Verrous : fusion sur accord explicite ; déploiement = VPS (git archive + `docker compose up -d auth`), sur accord explicite uniquement.
 - Ensuite côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
+
+## 2026-11-20 08:41 — trigenys-auth 32c2805 déployé (connecteur ChatGPT)
+
+- Trigenys/trigenys-auth#17 fusionnée (32c2805), envoyée sur le VPS par `git archive`, image reconstruite. Piège : `docker compose up -d auth` n'a pas recréé le conteneur malgré la nouvelle image → `up -d --no-deps --force-recreate auth` (contrôler l'ID d'image du conteneur après un déploiement).
+- Log : `clients.reconciled` updated=[trigenys-studio], unchanged=[trigenys-sign] ; conteneur healthy.
+- Preuve : authorize avec `redirect_uri=https://chatgpt.com/connector_platform_oauth_redirect` → 302 vers /login ; URI inconnue → `invalid_redirect`.
+- Reste : test réel côté ChatGPT par l'utilisateur (mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide).
