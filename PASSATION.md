@@ -531,3 +531,8 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Log : `clients.reconciled` updated=[trigenys-studio], unchanged=[trigenys-sign] ; conteneur healthy.
 - Preuve : authorize avec `redirect_uri=https://chatgpt.com/connector_platform_oauth_redirect` → 302 vers /login ; URI inconnue → `invalid_redirect`.
 - Reste : test réel côté ChatGPT par l'utilisateur (mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide).
+
+## 2026-11-20 08:42 — Procédure de déploiement trigenys-auth corrigée (PR ouverte)
+
+- Trigenys/trigenys-auth#18 (`docs/deploy-force-recreate`) : `deploy/README.md` impose `up -d --no-deps --force-recreate auth` + contrôle d'ID d'image (doit afficher OK) ; leçon ajoutée dans `docs/engineering/lessons-learned.md`. Docs seulement.
+- Verrou : fusion sur accord explicite. Reste aussi : test ChatGPT réel par l'utilisateur.
