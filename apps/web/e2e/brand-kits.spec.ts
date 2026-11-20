@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockApi, SVG } from "./api-mock";
+import { openSettings } from "./nav";
 
 // Brand kits are an admin screen: one approved kit per product, a new kit
 // is created from a logo file and a palette, and approving it retires the
@@ -10,6 +11,7 @@ const logo = { name: "logo.svg", mimeType: "image/svg+xml", buffer: Buffer.from(
 test("an admin reaches the kits from the dashboard and sees the approved kit", async ({ page }) => {
   await mockApi(page, { admin: true });
   await page.goto("/today");
+  await openSettings(page);
   await page.getByRole("link", { name: "Kits de marque" }).click();
   await expect(page).toHaveURL(/\/brand-kits$/);
   await expect(page.getByRole("heading", { level: 1, name: "Kits de marque" })).toBeVisible();
