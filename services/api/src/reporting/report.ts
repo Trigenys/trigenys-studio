@@ -74,7 +74,9 @@ export async function buildOperationalReport(db: Db, scope: ReportScope): Promis
     .select({ taskId: task.id, productId: task.productId, type: task.type, title: task.title, publishedAt: fp.publishedAt })
     .from(fp)
     .innerJoin(task, eq(task.id, fp.taskId))
-    .where(and(gte(fp.publishedAt, from), lt(fp.publishedAt, to), productFilter))
+    // `published_at` is an alias, not a column: no mapper turns the bounds into
+    // ISO strings, and the production driver rejects a raw Date.
+    .where(and(sql`${fp.publishedAt} >= ${from.toISOString()}::timestamptz`, sql`${fp.publishedAt} < ${to.toISOString()}::timestamptz`, productFilter))
     .orderBy(fp.publishedAt, task.title);
 
   const doneByKey = new Map<string, number>();
@@ -131,7 +133,8 @@ export async function buildOperationalReport(db: Db, scope: ReportScope): Promis
     })
     .from(delivery)
     .innerJoin(socialAccount, eq(socialAccount.id, delivery.socialAccountId))
-    .where(and(gte(when, from), lt(when, to), products ? inArray(socialAccount.productId, products.length ? products : ["-"]) : undefined))
+    // `when` is a coalesce, not a column: bind ISO bounds (see `published`).
+    .where(and(sql`${when} >= ${from.toISOString()}::timestamptz`, sql`${when} < ${to.toISOString()}::timestamptz`, products ? inArray(socialAccount.productId, products.length ? products : ["-"]) : undefined))
     .groupBy(socialAccount.productId, socialAccount.channel)
     .orderBy(socialAccount.productId, socialAccount.channel);
   const campaigns: ChannelCampaign[] = inScope(campaignRows);

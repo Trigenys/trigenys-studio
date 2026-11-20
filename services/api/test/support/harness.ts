@@ -20,13 +20,26 @@ export const authConfig: AuthConfig = {
   rpName: "Trigenys Studio (test)",
 };
 
+// Production runs drizzle's postgres-js driver, which turns its date
+// serialisers off: a JS Date reaches Postgres only through a timestamp column
+// (mapped to ISO). A Date bound anywhere else (a `sql` alias, a raw fragment)
+// is sent as `String(date)` and rejected, while PGlite accepts it. Fail here
+// as production would.
+const rawDateGuard = {
+  logQuery(query: string, params: unknown[]) {
+    if (params.some((p) => p instanceof Date)) {
+      throw new Error(`Raw Date parameter (pass an ISO string or compare a timestamp column): ${query}`);
+    }
+  },
+};
+
 // A fresh in-memory Postgres per harness, migrated with the committed SQL so
 // the migrations themselves are exercised by every test run.
 export async function createHarness(
   options: { integrations?: Partial<Integrations>; env?: Partial<Bindings>; oidc?: OidcConfig | null } = {},
 ) {
   const client = new PGlite();
-  const db = drizzle({ client, schema }) as unknown as Db;
+  const db = drizzle({ client, schema, logger: rawDateGuard }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
   const mailer = new MockMailer();
   const media = new MemoryMediaStore();
