@@ -416,3 +416,238 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Branche `feat/notifications-live` (ADR 0016) : web app servie par le Worker (binding `ASSETS`, aiguillage navigation/fetch dans `src/web/spa.ts`), `npm run check` construit la web, modes e-mail/WhatsApp `live`, `WEB_APP_URL`/`AUTH_TRUSTED_ORIGINS` = origine du Worker.
 - Piège : le repli SPA natif Cloudflare renvoie `index.html` à un `fetch('/tasks/…')` (chemins partagés web/API) → aiguillage dans le Worker.
 - Après merge des deux PR : `gh workflow run appfactory-infrastructure.yml --ref main`, puis assignation test (1 WhatsApp groupe « Trigenys Comm » + 1 e-mail).
+
+## 2026-11-19 14:39 — Release Worker : correctif du build web
+
+- Fusionnées : Trigenys/trigenys-notify#74 (Workers Build vert), #48 (web servie par le Worker, notifications en direct), #49 (correctif).
+- #48 : release du Worker en échec (`CLOUDFLARE_WORKERS_BUILD_FAILED`, runs 44534058093 / 44534087291) : la recette n'installe que `services/api`, `build:web` manquait des dépendances de `apps/web`. #49 : `build:web` installe d'abord le workspace web (LESSON-STUDIO-2026-010).
+- Run dispatch 44535574464 sur 8e3656b : vert (base + release Worker). Le push de #49 ne déclenche pas le workflow (`package.json` hors filtres).
+- Prod vérifiée 14:43 : navigation `/` et `/tasks/x` → HTML Studio ; fetch `/tasks/x` → 401 problem+json ; `/health` email/whatsapp `live` ; `/health/ready` 200 ; Notify `/health` 200.
+- Ensuite : test d'assignation : connexion de l'utilisateur par lien magique, `bootstrap-local.sql` dans la console Neon, connexion de Tiffany, rôle `operator` via `POST /roles`, assignation d'une tâche → e-mail + message « Trigenys Comm » (cron `*/5`).
+- Sous Windows, `openapi:check` peut signaler un faux écart (CRLF) : vérifier avec `git diff --ignore-cr-at-eol`.
+
+## 2026-11-19 15:18 — Lien de connexion : deux causes en production
+
+- Symptôme : « Envoi impossible » sur /login (HTTP 500 sur `/api/auth/sign-in/magic-link`).
+- Cause 1, corrigée par #51 (504cf90, run 44540463496 vert) : le `fetch` global rangé sur l'adaptateur lève « Illegal invocation » sur Workers → `defaultFetch` (LESSON-STUDIO-2026-011).
+- Cause 2, PR #52 ouverte : Studio → Notify, deux Workers `workers.dev` du même compte, `fetch` refusé (404, erreur 1042) → drapeau `global_fetch_strictly_public` (LESSON-STUDIO-2026-012). Le merge déclenche seul le workflow infra (fichier `wrangler.production.jsonc`).
+- Après déploiement de #52 : refaire `POST /api/auth/sign-in/magic-link` (attendu 200), puis connexion utilisatrice, puis assignation test.
+- Main local diverge d'origin/main : travailler sur des branches tirées d'`origin/main`.
+
+## 2026-11-19 15:22 — Lien de connexion rétabli en production
+
+- #52 fusionnée (596f1c3), run infra 44542428321 vert (base + release Worker).
+- `POST /api/auth/sign-in/magic-link` → 200 `{"status":true}` ; health 200. Un e-mail réel est parti vers l'adresse de l'utilisatrice.
+- Prochaine étape : connexion de l'utilisatrice, `bootstrap-local.sql` avec son e-mail (console Neon), connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail + WhatsApp (cron 5 min).
+- PR #50 (passation) toujours ouverte, à fusionner.
+
+## 2026-11-19 15:31 — Premier admin en production (PR #53)
+
+- Lien magique OK en prod ; le compte connecté n'a aucun rôle (Forbidden). Le premier admin ne passe pas par l'API, et seul `appfactory-infrastructure.yml` obtient la base (liste blanche OIDC AppFactory, `src/auth.ts` `authorizeDatabaseLeaseClaims`).
+- PR #53 : entrée `admin_email` sur le dispatch du workflow → `npm run db:bootstrap-admin` (admin + 3 produits, idempotent, audit `admin.bootstrap`).
+- Après merge : `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=<e-mail>`, puis recharger /today.
+- Ensuite : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), Tiffany `operator`, assignation test.
+
+## 2026-11-19 15:38 — Bootstrap admin : #53 mergée, échec TLS, correctif #54 ouvert
+
+- #53 mergée (1d10457). Dispatch 44545011912 avec `admin_email` : migrations OK, bootstrap KO (URL du bail sans `sslmode` → connexion en clair refusée). Aucune écriture.
+- PR #54 (ouverte, non mergée) : script via `migrationCredentials` (TLS), code SQLSTATE en erreur, garde-fou test, LESSON-STUDIO-2026-013.
+- Prochaine étape : merger #54 (accord explicite requis), puis `gh workflow run appfactory-infrastructure.yml --ref main -f admin_email=jennifer@trigenys.com`, vérifier le job, recharger /today.
+- Ensuite : gabarit HTML des e-mails, Tiffany `operator`, assignation test.
+
+## 2026-11-19 15:53 — Premier admin en production : fait
+
+- #54 mergée. Run 44548071813 (dispatch `admin_email`) vert : « role granted, products created: 3 » ; release Worker verte.
+- Prochaine étape : gabarit HTML des e-mails (Adapt de roadmapmentor `server/services/emailLayout.ts`), puis Tiffany `operator` via `POST /roles`, assignation test (e-mail + WhatsApp « Trigenys Comm »).
+- PR #50 (passation) toujours ouverte.
+
+## 2026-11-19 17:01 — E-mails HTML aux couleurs du Studio (PR #55)
+
+- #55 mergée (8535ce3) : `services/api/src/email/layout.ts` (gabarit adapté de roadmapmentor, styles inline, accent #7f2044) + `templates.ts` (lien magique, tâche assignée, alerte → sujet/texte/HTML). `Mail.html` optionnel ; l'adaptateur Notify garde `toHtml(text)` en repli. 205 tests verts.
+- Déploiement : dispatch `appfactory-infrastructure.yml --ref main`, run 44561237371 (résultat à vérifier).
+- Prochaine étape : connexion de Tiffany, rôle `operator` (`POST /roles`), assignation test → e-mail HTML + WhatsApp « Trigenys Comm » (cron 5 min).
+- PR #50 (passation) toujours ouverte.
+
+## 2026-11-19 17:51 — README production API/MCP (PR #56)
+
+- Run 44561237371 vert : e-mails HTML en production.
+- Vérifié en direct : `/health?deep=true` 200, `/openapi.json` 200, `/me` et `/mcp` 401 sans jeton.
+- #56 mergée (2e339c3) : section README « Production : web, API et MCP » (origine unique, jeton `session.token` en Bearer 30 j, `claude mcp add --transport http`, 16 outils, octroi de rôle via `/me` → `POST /roles`).
+- Limites connues : pas d'OAuth 2.1 MCP (connecteurs claude.ai), pas d'écran admin rôles/utilisateurs (pistes : `POST /roles` par e-mail).
+- Prochaine étape inchangée : Tiffany se connecte, envoie son `userId` (`/me`), rôle `operator`, assignation test.
+- PR #50 (passation) toujours ouverte ; `main` local en retard, à réaligner.
+
+## 2026-11-19 18:53 — Identité commune : bascule vers trigenys-auth
+
+- Décision utilisateur : l'équipe (e-mail, téléphone) n'est saisie qu'une fois, dans `Trigenys/trigenys-auth` (OIDC/OAuth 2.1), pas dans la SQLite de Sign (qui mélange équipe et signataires externes).
+- Session dédiée « Déployer trigenys-auth et y reprendre l'équipe » (local_2a1ff2a9-…) : Trigenys/trigenys-auth#9 (import d'équipe idempotent, CLI migrate, clients OAuth `trigenys-studio`/`trigenys-sign`, port 8793). DNS `auth.trigenys.com` chez Spaceship à pointer sur 15.235.90.215 ; déploiement VPS sur accord explicite. Question en cours : connexion par lien magique au lieu du mot de passe dans trigenys-auth.
+- Côté Studio, à faire après : Studio client OIDC de trigenys-auth (rôles via claim `roles`), OAuth 2.1 du MCP adossé à trigenys-auth ; l'octroi de rôle par e-mail est mis en attente.
+- Tiffany : en attente de trigenys-auth.
+
+## 2026-11-20 05:33 — MCP OAuth 2.1 adossé à trigenys-auth (plan)
+
+- trigenys-auth en prod (issuer `https://auth.trigenys.com`, RFC 8414 et OIDC discovery 200, PKCE S256, pas de DCR). Client public `trigenys-studio` déclaré (redirect claude.ai, resource `…workers.dev/mcp`, rôles admin/operator/reviewer).
+- Plan retenu (architecte) : `/mcp` = ressource OAuth (PRM RFC 9728, 401 `WWW-Authenticate`), validation JWT `at+jwt` via `jose` (JWKS en cache), liaison `account(providerId=trigenys-auth, accountId=sub)`, rôles du jeton copiés dans `role_assignment` avec `source='idp'` (globaux), bearer Better Auth inchangé. Fonction inactive tant que `OIDC_ISSUER` est vide.
+- Verrou : restreindre aux orgs autorisées (`OIDC_ORGS`), sinon un membre d'une autre org deviendrait operator.
+- Ensuite : API annuaire dans trigenys-auth + sync (assignable avant 1re connexion), puis connexion web via `genericOAuth`.
+- Branche d'implémentation : `feat/mcp-oauth-trigenys-auth` depuis origin/main.
+
+## 2026-11-20 05:44 — MCP OAuth 2.1 via trigenys-auth (PR #58 ouverte)
+
+- Branche `feat/mcp-oauth-trigenys-auth`, PR https://github.com/Trigenys/trigenys-studio/pull/58 (3 commits) : vérificateur JWT `at+jwt` (jose, `src/auth/oidc.ts`), liaison sub → utilisateur par e-mail vérifié + réconciliation des rôles `source=idp` (`src/auth/identity.ts`, migration 0011), PRM `/.well-known/oauth-protected-resource[/mcp]`, 401 `resource_metadata`, 409 sur révocation d'un rôle idp.
+- Prod : vars `OIDC_ISSUER=https://auth.trigenys.com`, `OIDC_RESOURCE=…/mcp`, `OIDC_ORGS=trigenys`, `OIDC_APP=trigenys-studio` dans `wrangler.production.jsonc` (actif dès le déploiement suivant la fusion).
+- Preuve locale : 220 tests verts (dont 14 dans `test/oidc.test.ts`), typecheck + build des workspaces, `openapi:check` OK.
+- Après fusion : `gh workflow run appfactory-infrastructure.yml --ref main`, puis connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) ; vérifier `GET /.well-known/oauth-protected-resource/mcp`.
+- Suites : API annuaire dans trigenys-auth + synchro Studio (cron), connexion web via genericOAuth, affectation test à Tiffany. PR #50 (passation) toujours ouverte.
+
+## 2026-11-20 06:39 — PR #58 fusionnée, déploiement en attente
+
+- #58 fusionnée sur main (92157e3, squash, branche supprimée). OAuth MCP via trigenys-auth actif dès le prochain déploiement.
+- Déploiement non lancé : `gh workflow run appfactory-infrastructure.yml --repo Trigenys/trigenys-studio --ref main` attend l'accord explicite de l'utilisateur.
+- Après déploiement : vérifier `GET /.well-known/oauth-protected-resource/mcp` (200, issuer auth.trigenys.com) et `POST /mcp` sans jeton (401 + resource_metadata), puis connecteur claude.ai (Client ID `trigenys-studio`, secret vide).
+
+## 2026-11-20 07:09 — MCP OAuth via trigenys-auth déployé en production
+
+- Run appfactory-infrastructure 44683914459 (92157e3) : migrations Neon (0011) + Worker OK.
+- Prod vérifiée : PRM `/.well-known/oauth-protected-resource/mcp` 200 (authorization_servers auth.trigenys.com) ; `POST /mcp` sans jeton → 401 `resource_metadata` ; JWT forgé → 401 `error="invalid_token"` (découverte + JWKS de trigenys-auth joignables, pas de 503).
+- Reste : test réel du connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) par l'utilisateur ; puis API annuaire trigenys-auth + synchro, connexion web genericOAuth, affectation test à Tiffany. PR #50 ouverte.
+
+## 2026-11-20 08:30 — Connecteur claude.ai validé, ChatGPT à préparer
+
+- Connecteur MCP Studio ajouté dans claude.ai (client `trigenys-studio`, connexion Trigenys Auth) : appel `list_tasks` authentifié OK (liste vide).
+- ChatGPT : trigenys-auth annonce `authorization_response_iss_parameter_supported: true` → ChatGPT utilisera l'URI stable `https://chatgpt.com/connector_platform_oauth_redirect`. DCR désactivé (`allowDynamicClientRegistration: false`) → client statique.
+- Prochaine étape (sur accord) : PR trigenys-auth ajoutant cette URI à `redirectUris` du client `trigenys-studio` dans `deploy/clients.production.json`, puis déploiement trigenys-auth ; côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
+- Écran « Soumissions » (Pack de plug-ins / Connecteur MCP) de l'app Claude = publication dans un annuaire : inutile ici.
+
+## 2026-11-20 08:32 — PR ChatGPT ouverte dans trigenys-auth
+
+- Trigenys/trigenys-auth#17 (branche `feat/chatgpt-redirect-uri`) : URI `https://chatgpt.com/connector_platform_oauth_redirect` ajoutée au client `trigenys-studio` + test `test/production-clients.test.ts` (fichier prod validé avec les règles de production). `npm run check` : 67/67.
+- Verrous : fusion sur accord explicite ; déploiement = VPS (git archive + `docker compose up -d auth`), sur accord explicite uniquement.
+- Ensuite côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
+
+## 2026-11-20 08:41 — trigenys-auth 32c2805 déployé (connecteur ChatGPT)
+
+- Trigenys/trigenys-auth#17 fusionnée (32c2805), envoyée sur le VPS par `git archive`, image reconstruite. Piège : `docker compose up -d auth` n'a pas recréé le conteneur malgré la nouvelle image → `up -d --no-deps --force-recreate auth` (contrôler l'ID d'image du conteneur après un déploiement).
+- Log : `clients.reconciled` updated=[trigenys-studio], unchanged=[trigenys-sign] ; conteneur healthy.
+- Preuve : authorize avec `redirect_uri=https://chatgpt.com/connector_platform_oauth_redirect` → 302 vers /login ; URI inconnue → `invalid_redirect`.
+- Reste : test réel côté ChatGPT par l'utilisateur (mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide).
+
+## 2026-11-20 08:42 — Procédure de déploiement trigenys-auth corrigée (PR ouverte)
+
+- Trigenys/trigenys-auth#18 (`docs/deploy-force-recreate`) : `deploy/README.md` impose `up -d --no-deps --force-recreate auth` + contrôle d'ID d'image (doit afficher OK) ; leçon ajoutée dans `docs/engineering/lessons-learned.md`. Docs seulement.
+- Verrou : fusion sur accord explicite. Reste aussi : test ChatGPT réel par l'utilisateur.
+
+## 2026-11-20 09:03 — trigenys-auth#18 fusionnée
+
+- dd4ab4f sur main de trigenys-auth : procédure de déploiement avec `--force-recreate` + contrôle d'image. Docs seulement, pas de redéploiement nécessaire (VPS sur 32c2805).
+- Reste : test ChatGPT réel par l'utilisateur ; ensuite API annuaire trigenys-auth (client_credentials) puis sync Studio.
+
+## 2026-11-20 09:27 — Connecteur ChatGPT : description et icône
+
+- Serveur prêt (trigenys-auth 32c2805 déployé, URI `https://chatgpt.com/connector_platform_oauth_redirect` acceptée). L'utilisateur crée le connecteur sur chatgpt.com/plugins : URL `/mcp` du Worker, OAuth, Client ID `trigenys-studio`, sans secret.
+- Icône retenue : hélice binaire Trigenys (motif du logo groupe et de l'icône Auth) en bits « 1 »/« 0 » sarcelle et rose sur le bordeaux Studio. Fichiers `~/Downloads/trigenys-studio-icon-helice.{png,svg}` (512×512), hors dépôt.
+- Prochaine étape : résultat du test ChatGPT ; si l'URI de retour affichée diffère, l'ajouter dans `trigenys-auth/deploy/clients.production.json` (PR + déploiement sur accord).
+
+## 2026-11-20 09:53 — Connecteur ChatGPT : 403 du garde d'origine MCP
+- OAuth ChatGPT OK côté trigenys-auth (jetons émis, bonne ressource, même utilisateur que Claude) ; échec à l'appel /mcp.
+- Cause probable : ChatGPT envoie `Origin: https://chatgpt.com` ; `mcpOriginGuard` refusait (403) toute origine hors AUTH_TRUSTED_ORIGINS.
+- PR #59 (fix/mcp-bearer-origin) : JWT Trigenys Auth sans cookie exempté du contrôle d'origine ; cookie / session Better Auth toujours contrôlés. check 0, 221/221 en série.
+- 4 tests échouent en parallèle (timeouts PGlite) aussi sur main : préexistant, charge machine.
+- Reste : fusion + déploiement (accord requis), puis relancer la connexion dans ChatGPT.
+
+## 2026-11-20 09:59 — PR #59 fusionnée et déployée
+- #59 squash-mergée (18842e8), run appfactory-infrastructure 44706588384 : succès (Neon + Worker).
+- Contrôle prod : /mcp anonyme avec Origin chatgpt.com -> 401 (attendu), PRM -> 200.
+- wrangler tail filtré en cours (scratchpad tail.log) pour voir l'appel ChatGPT authentifié.
+- Prochaine étape : l'utilisateur relance la connexion dans ChatGPT ; attendu : POST /mcp 200 avec origin=chatgpt.com auth=yes. Si échec, lire tail.log (statut, méthode GET/POST).
+
+## 2026-11-20 10:04 — ChatGPT : « This account is already connected »
+- Après #59 : ChatGPT obtient des jetons (09:02:48 et 09:02:59 UTC) pour le compte Trigenys PlHHV6 (@trigenys.com, même que Claude) mais n'appelle pas /mcp.
+- Message ChatGPT « This account is already connected » : une connexion existe déjà côté ChatGPT (tentatives de 08:34/08:38) ; ChatGPT refuse le doublon avant tout appel MCP.
+- Action utilisateur : ChatGPT → Paramètres → Applications → Trigenys Studio → déconnecter, puis reconnecter.
+- wrangler tail élargi à toutes les routes (scratchpad tail.log) pour voir le premier appel après reconnexion.
+
+## 2026-11-20 10:45 — ChatGPT : 500 sur /mcp après OAuth
+
+- PR #59 (origine des jetons OAuth) fusionnée et déployée. L'OAuth ChatGPT aboutit (refresh token émis, ressource /mcp, compte Trigenys).
+- Ensuite `POST /mcp` avec jeton (`openai-mcp/1.0.0`) → 500, journal `["Error",""]` : une `HTTPException` du transport `@hono/mcp` masquée par `app.onError`.
+- PR #60 (`fix/mcp-transport-errors`) : renvoie la réponse du transport (4xx JSON-RPC) et journalise statut + en-têtes de négociation. Sonde locale : toutes les variantes initialize passent ; seule une version de protocole > 2025-11-25 sur un appel non-initialize donne 400 (SDK 1.32.2 = dernier).
+- Suite : fusion + déploiement (accord requis), reconnexion ChatGPT, lire le relevé `wrangler tail` pour la cause exacte, la corriger.
+
+## 2026-11-20 11:05 — ChatGPT : cause du 500 trouvée, connexion MCP aboutie
+
+- PR #60 fusionnée (384d87f) et déployée (run 44714884137).
+- Cause : ChatGPT sonde d'abord `POST /mcp` avec `mcp-protocol-version: 2026-07-28` (non supportée par le SDK 1.32.2, le plus récent). Le refus 400 du transport était masqué en 500, et ChatGPT abandonnait. Avec un 400, il se replie sur la poignée de main classique : initialize 200, notifications 202, tools/list 200 (relevé à 10:04 UTC).
+- Piège : `wrangler tail` décroche à chaque déploiement, il faut le relancer.
+- Suite : confirmer côté ChatGPT que le plugin est connecté et que les outils répondent. Prendre en charge 2026-07-28 quand le SDK MCP le fera.
+
+## 2026-11-20 11:08 — Connecteur ChatGPT OK, assignation test à Tiffany bloquée
+
+- PR #60 (refus du transport MCP renvoyés tels quels au lieu d'un 500) fusionnée et déployée ; ChatGPT connecté au Studio via Trigenys Auth.
+- Assignation test : Tiffany n'est pas un utilisateur Studio (list_assignees ne renvoie que l'admin).
+- Trigenys Auth : Tiffany est membre de l'org trigenys mais son e-mail n'est pas vérifié, et aucun appRoleAssignment n'existe pour trigenys-studio (personne).
+- Conséquence : sa première connexion OIDC/MCP serait refusée (403, e-mail non vérifié), et sans rôle elle ne serait pas assignable.
+- Prochaine étape proposée : synchronisation de l'annuaire Trigenys Auth → Studio (membres de l'org → utilisateurs Studio + rôles), puis create_task assigné à Tiffany pour tester e-mail + WhatsApp « Trigenys Comm ».
+
+## 2026-11-20 11:31 — Sync annuaire, 500 du rapport, outils MCP
+
+- **trigenys-auth** : branche `feat/directory-members` (96804567) poussée, sans PR ni déploiement. Annuaire `GET /api/auth/directory/members?org=`, client `trigenys-studio-directory`, scope `directory`. Le secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` doit être dans l'env du VPS **avant** le déploiement (accord requis), puis la même valeur va dans le secret Worker Studio `DIRECTORY_CLIENT_SECRET`.
+- **Studio** : branche `feat/directory-sync` poussée (cron + `POST /directory/sync`, 8 tests ; la suite passe à 230/230). PR à ouvrir.
+- **Studio** : branche `fix/report-and-mcp-tools`.
+  - Cause du 500 de `get_editorial_report` : le driver postgres-js de Drizzle désactive ses sérialiseurs de dates, donc un `Date` comparé à un alias `sql` (`published_at`, `coalesce(sent_at, scheduled_at)`) part en `String(date)` et Postgres le refuse. PGlite l'acceptait.
+  - Correctif : bornes envoyées en ISO `::timestamptz`.
+  - Garde-fou : un logger dans `test/support/harness.ts` fait échouer toute requête qui reçoit un `Date` brut.
+  - Nouveaux outils MCP : list_products, update_task, save_content, list_visual_formats, render_visual, move_task, add_comment.
+- **Lectures vides en prod** : des 200 vides, pas des 403. La base de prod est vide (aucun produit, compte social ni tâche).
+- **Suite** : PR des deux branches → fusion et déploiement sur accord → secrets → assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
+
+## 2026-11-20 11:35 — PR ouvertes (annuaire, rapport, outils MCP)
+
+- Trigenys/trigenys-studio#61 : correctif du 500 du rapport et outils MCP d'édition (223/223, tsc 0, LESSON-STUDIO-2026-014).
+- Trigenys/trigenys-studio#62 : import de l'équipe depuis l'annuaire Trigenys Auth.
+- Trigenys/trigenys-auth#19 : endpoint annuaire `client_credentials`.
+- Rien n'est fusionné ni déployé ; aucun changement sur le VPS.
+- Ordre : secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` sur le VPS (accord requis) → fusion et déploiement de auth#19 → secret Worker `DIRECTORY_CLIENT_SECRET` → fusion de #61 et #62 → déploiement Studio → `POST /directory/sync` → assignation de test à Tiffany.
+- La base de prod est vide : il faut créer au moins un produit avant une tâche.
+
+## 2026-11-20 11:39 — #61 fusionnée, déploiement en attente
+
+- Trigenys/trigenys-studio#61 fusionnée (936b609) : correctif du 500 du rapport et outils MCP d'édition. **Pas encore déployée** : il faut l'accord explicite pour le déploiement.
+- Toujours ouvertes : studio#62 et auth#19 (secret VPS d'abord, voir l'entrée précédente).
+- Suite : `gh workflow run appfactory-infrastructure.yml --ref main`, puis rappeler `get_editorial_report` via MCP (on attend un 200).
+
+## 2026-11-20 11:43 — #61 en production
+
+- Run 44721146117 réussi (migrations Neon + Worker) sur 936b609.
+- `get_editorial_report` 2026-11 renvoie 200 via MCP. Le 500 est corrigé.
+- Correction de l'entrée précédente : la prod contient **3 produits** (atelier, precis, insight). Ce sont les tâches, les comptes sociaux et les imports qui sont vides, pas les produits.
+- Les clients MCP doivent rafraîchir la liste d'outils (reconnexion) pour voir les 7 nouveaux outils.
+- Restent ouvertes : studio#62 et auth#19. Le secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` doit aller sur le VPS d'abord (accord requis).
+
+## 2026-11-20 11:45 — Secret annuaire posé sur le VPS
+
+- `TRIGENYS_STUDIO_DIRECTORY_SECRET` a été ajouté à `~/trigenys-auth/.env` sur le VPS (mode 600, jamais affiché). Il est lu via `env_file`, et une sauvegarde `.env.bak-<date>` a été faite.
+- Le conteneur n'a pas été recréé : il est toujours `healthy` et la découverte OIDC publique répond 200.
+- Pour poser la même valeur côté Studio sans l'afficher, la lire par ssh et la passer par pipe à `wrangler secret put DIRECTORY_CLIENT_SECRET`. Accord requis.
+- Suite : fusion et déploiement de auth#19 (révision `feat/directory-members`), puis fusion de studio#62, déploiement Studio, `POST /directory/sync`, et assignation de test à Tiffany.
+
+## 2026-11-20 11:51 — auth#19 en production, secret Studio posé
+
+- Trigenys/trigenys-auth#19 fusionnée (2e63e9e) et déployée sur le VPS.
+  - Sauvegarde `~/backups/trigenys-auth-2026-11-20-1047.sql.gz`.
+  - Plan de migration vide. Image vérifiée, `/health` ok, OIDC 200.
+  - `clients.reconciled` a créé `trigenys-studio-directory`.
+- Secret Worker Studio `DIRECTORY_CLIENT_SECRET` posé par pipe depuis le VPS, jamais affiché.
+- Vérification : jeton `client_credentials` obtenu, annuaire 200, 3 membres (2 admins et Tiffany en `operator`).
+- Piège : en Basic auth, l'id et le secret doivent être encodés (RFC 6749 §2.3.1). Un secret base64 non encodé (+ / =) donne `invalid client_secret`. Le Studio encode déjà (`encodeURIComponent`). `client_secret_post` est refusé pour ce client.
+- Côté Studio, seule Jennifer est assignable aujourd'hui. Tiffany sera créée par la synchro.
+- Suite (accord requis) : fusion de studio#62, déploiement Studio, `POST /directory/sync`, puis assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
+
+## 2026-11-20 12:15 — Synchro annuaire en prod + assignation test
+
+- #61 (rapport éditorial, outils MCP d'édition) et #62 (import de l'équipe depuis l'annuaire Trigenys Auth) fusionnés et déployés (run 44723262430, 6ae5a0e). Trigenys Auth #19 déployé sur le VPS, client `directory` créé, secret posé côté VPS et Worker.
+- Le cron `*/5` importe l'équipe : Ibrahim et Jennifer (admin), Tiffany (operator, id 193167f2-…).
+- Tâche test `39caadc9-…` (atelier, « Test de notification — à ignorer ») assignée à Tiffany : message WhatsApp reçu dans « Trigenys Comm » (confirmé par l'utilisateur). Réception de l'e-mail par Tiffany pas encore confirmée.
+- Checkout principal en HEAD détaché sur origin/main ; main local porte le commit non poussé e776437, à ne pas perdre.
+- Responsive mobile (barre de navigation basse) confié à une session séparée, avec PR à venir.
+- Prochaine étape : confirmer l'e-mail, puis supprimer ou rejeter la tâche test.
