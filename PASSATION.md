@@ -642,3 +642,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Piège : en Basic auth, l'id et le secret doivent être encodés (RFC 6749 §2.3.1). Un secret base64 non encodé (+ / =) donne `invalid client_secret`. Le Studio encode déjà (`encodeURIComponent`). `client_secret_post` est refusé pour ce client.
 - Côté Studio, seule Jennifer est assignable aujourd'hui. Tiffany sera créée par la synchro.
 - Suite (accord requis) : fusion de studio#62, déploiement Studio, `POST /directory/sync`, puis assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
+
+## 2026-11-20 12:15 — Synchro annuaire en prod + assignation test
+
+- #61 (rapport éditorial, outils MCP d'édition) et #62 (import de l'équipe depuis l'annuaire Trigenys Auth) fusionnés et déployés (run 44723262430, 6ae5a0e). Trigenys Auth #19 déployé sur le VPS, client `directory` créé, secret posé côté VPS et Worker.
+- Le cron `*/5` importe l'équipe : Ibrahim et Jennifer (admin), Tiffany (operator, id 193167f2-…).
+- Tâche test `39caadc9-…` (atelier, « Test de notification — à ignorer ») assignée à Tiffany : message WhatsApp reçu dans « Trigenys Comm » (confirmé par l'utilisateur). Réception de l'e-mail par Tiffany pas encore confirmée.
+- Checkout principal en HEAD détaché sur origin/main ; main local porte le commit non poussé e776437, à ne pas perdre.
+- Responsive mobile (barre de navigation basse) confié à une session séparée, avec PR à venir.
+- Prochaine étape : confirmer l'e-mail, puis supprimer ou rejeter la tâche test.
