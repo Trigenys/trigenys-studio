@@ -518,3 +518,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - ChatGPT : trigenys-auth annonce `authorization_response_iss_parameter_supported: true` → ChatGPT utilisera l'URI stable `https://chatgpt.com/connector_platform_oauth_redirect`. DCR désactivé (`allowDynamicClientRegistration: false`) → client statique.
 - Prochaine étape (sur accord) : PR trigenys-auth ajoutant cette URI à `redirectUris` du client `trigenys-studio` dans `deploy/clients.production.json`, puis déploiement trigenys-auth ; côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
 - Écran « Soumissions » (Pack de plug-ins / Connecteur MCP) de l'app Claude = publication dans un annuaire : inutile ici.
+
+## 2026-11-20 08:32 — PR ChatGPT ouverte dans trigenys-auth
+
+- Trigenys/trigenys-auth#17 (branche `feat/chatgpt-redirect-uri`) : URI `https://chatgpt.com/connector_platform_oauth_redirect` ajoutée au client `trigenys-studio` + test `test/production-clients.test.ts` (fichier prod validé avec les règles de production). `npm run check` : 67/67.
+- Verrous : fusion sur accord explicite ; déploiement = VPS (git archive + `docker compose up -d auth`), sur accord explicite uniquement.
+- Ensuite côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
