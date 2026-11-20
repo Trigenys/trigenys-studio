@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockApi, tasks } from "./api-mock";
+import { openSettings } from "./nav";
 
 // Publishing: an approved task is planned on a social account, the task
 // follows its delivery (scheduled, back to approved on cancel, failed then
@@ -82,6 +83,7 @@ test("a task that is not approved cannot be planned and a reviewer sees no form"
 test("an admin links a social account from the provider's channels and deactivates it", async ({ page }) => {
   await mockApi(page, { admin: true });
   await page.goto("/today");
+  await openSettings(page);
   await page.getByRole("link", { name: "Comptes sociaux" }).click();
   await expect(page).toHaveURL(/\/social-accounts$/);
   const accounts = page.getByRole("list", { name: "Comptes" });

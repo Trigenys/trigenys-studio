@@ -315,3 +315,52 @@ meter { vertical-align: middle; min-width: 120px; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 .state-detail { display: block; margin-top: 2px; color: var(--muted); font-size: 14px; }
+
+/* Phones and tablets above the tab-bar breakpoint never show the phone chrome. */
+.tab-bar, .account-menu { display: none; }
+
+/* Phones (< 768px): slim header with an account menu, and the main sections in a
+   bottom tab bar fixed above the iOS home indicator (viewport-fit=cover). */
+@media (max-width: 767px) {
+  :root { --tab-bar: 56px; }
+  .sidebar {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand account"; align-items: center;
+    padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  }
+  .global-nav, .account { display: none; }
+  .main { padding-bottom: calc(var(--tab-bar) + env(safe-area-inset-bottom) + 32px); }
+
+  .account-menu { display: block; grid-area: account; position: relative; }
+  .account-menu > summary { list-style: none; }
+  .account-menu > summary::-webkit-details-marker { display: none; }
+  .account-menu[open] > summary { color: var(--text); background: var(--surface-2); }
+  .account-menu-panel {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: min(260px, calc(100vw - 32px));
+    display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow);
+  }
+  .account-menu-name { margin: 0; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .account-menu-panel nav { display: grid; gap: 2px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .account-menu-panel .nav-link { min-height: 40px; border-radius: var(--r-md); border-bottom: 0; }
+  .account-menu-panel .nav-link[aria-current="page"] { background: var(--accent-soft); }
+
+  .tab-bar {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background: var(--surface); border-top: 1px solid var(--line);
+  }
+  .tab-link {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: var(--tab-bar);
+    padding: 6px 2px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 500; line-height: 1.2;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-link:focus-visible { box-shadow: inset var(--focus); border-radius: var(--r-md); }
+  .tab-icon { position: relative; display: inline-flex; padding: 3px 16px; border-radius: 999px; transition: background 0.12s; }
+  .tab-link[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .tab-link[aria-current="page"] .tab-icon { background: var(--accent-soft); }
+  .tab-link { position: relative; }
+  .tab-link .count {
+    position: absolute; top: 3px; left: calc(50% + 6px); min-width: 18px; padding: 0 5px; line-height: 18px; font-size: 11px;
+    background: var(--danger); color: var(--surface);
+  }
+  .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
