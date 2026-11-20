@@ -609,3 +609,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Rien n'est fusionné ni déployé ; aucun changement sur le VPS.
 - Ordre : secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` sur le VPS (accord requis) → fusion et déploiement de auth#19 → secret Worker `DIRECTORY_CLIENT_SECRET` → fusion de #61 et #62 → déploiement Studio → `POST /directory/sync` → assignation de test à Tiffany.
 - La base de prod est vide : il faut créer au moins un produit avant une tâche.
+
+## 2026-11-20 11:39 — #61 fusionnée, déploiement en attente
+
+- Trigenys/trigenys-studio#61 fusionnée (936b609) : correctif du 500 du rapport et outils MCP d'édition. **Pas encore déployée** : il faut l'accord explicite pour le déploiement.
+- Toujours ouvertes : studio#62 et auth#19 (secret VPS d'abord, voir l'entrée précédente).
+- Suite : `gh workflow run appfactory-infrastructure.yml --ref main`, puis rappeler `get_editorial_report` via MCP (on attend un 200).
