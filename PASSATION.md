@@ -499,3 +499,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Preuve locale : 220 tests verts (dont 14 dans `test/oidc.test.ts`), typecheck + build des workspaces, `openapi:check` OK.
 - Après fusion : `gh workflow run appfactory-infrastructure.yml --ref main`, puis connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) ; vérifier `GET /.well-known/oauth-protected-resource/mcp`.
 - Suites : API annuaire dans trigenys-auth + synchro Studio (cron), connexion web via genericOAuth, affectation test à Tiffany. PR #50 (passation) toujours ouverte.
+
+## 2026-11-20 06:39 — PR #58 fusionnée, déploiement en attente
+
+- #58 fusionnée sur main (92157e3, squash, branche supprimée). OAuth MCP via trigenys-auth actif dès le prochain déploiement.
+- Déploiement non lancé : `gh workflow run appfactory-infrastructure.yml --repo Trigenys/trigenys-studio --ref main` attend l'accord explicite de l'utilisateur.
+- Après déploiement : vérifier `GET /.well-known/oauth-protected-resource/mcp` (200, issuer auth.trigenys.com) et `POST /mcp` sans jeton (401 + resource_metadata), puis connecteur claude.ai (Client ID `trigenys-studio`, secret vide).
