@@ -491,3 +491,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Verrou : restreindre aux orgs autorisées (`OIDC_ORGS`), sinon un membre d'une autre org deviendrait operator.
 - Ensuite : API annuaire dans trigenys-auth + sync (assignable avant 1re connexion), puis connexion web via `genericOAuth`.
 - Branche d'implémentation : `feat/mcp-oauth-trigenys-auth` depuis origin/main.
+
+## 2026-11-20 05:44 — MCP OAuth 2.1 via trigenys-auth (PR #58 ouverte)
+
+- Branche `feat/mcp-oauth-trigenys-auth`, PR https://github.com/Trigenys/trigenys-studio/pull/58 (3 commits) : vérificateur JWT `at+jwt` (jose, `src/auth/oidc.ts`), liaison sub → utilisateur par e-mail vérifié + réconciliation des rôles `source=idp` (`src/auth/identity.ts`, migration 0011), PRM `/.well-known/oauth-protected-resource[/mcp]`, 401 `resource_metadata`, 409 sur révocation d'un rôle idp.
+- Prod : vars `OIDC_ISSUER=https://auth.trigenys.com`, `OIDC_RESOURCE=…/mcp`, `OIDC_ORGS=trigenys`, `OIDC_APP=trigenys-studio` dans `wrangler.production.jsonc` (actif dès le déploiement suivant la fusion).
+- Preuve locale : 220 tests verts (dont 14 dans `test/oidc.test.ts`), typecheck + build des workspaces, `openapi:check` OK.
+- Après fusion : `gh workflow run appfactory-infrastructure.yml --ref main`, puis connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) ; vérifier `GET /.well-known/oauth-protected-resource/mcp`.
+- Suites : API annuaire dans trigenys-auth + synchro Studio (cron), connexion web via genericOAuth, affectation test à Tiffany. PR #50 (passation) toujours ouverte.
