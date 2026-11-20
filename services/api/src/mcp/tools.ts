@@ -100,6 +100,13 @@ export const TOOLS: ReadonlyArray<ToolSpec> = [
     toRequest: ({ importId }) => ({ method: "POST", path: `/imports/${encodeURIComponent(importId)}/ignore` }),
   }),
   define({
+    name: "list_products",
+    description: "Produits (marques, offres) visibles par l'utilisateur : id à passer en productId.",
+    input: {},
+    annotations: READ,
+    toRequest: () => ({ method: "GET", path: "/products" }),
+  }),
+  define({
     name: "list_tasks",
     description: 'Tâches de production visibles par l\'utilisateur. assigneeId="me" sélectionne ses propres tâches.',
     input: {
@@ -150,10 +157,102 @@ export const TOOLS: ReadonlyArray<ToolSpec> = [
   }),
   define({
     name: "get_task",
-    description: "Détail d'une tâche : état, version de contenu courante, transitions autorisées.",
+    description: "Détail d'une tâche : état, version (pour update_task et assign_task), dernier texte enregistré (latestVersion), transitions autorisées.",
     input: { taskId: z.string().min(1) },
     annotations: READ,
     toRequest: ({ taskId }) => ({ method: "GET", path: `/tasks/${encodeURIComponent(taskId)}` }),
+  }),
+  define({
+    name: "update_task",
+    description:
+      "Modifie le cadrage d'une tâche (titre, brief, type, priorité, échéance). version = celle lue par get_task : un conflit 409 signifie que la tâche a changé entre-temps.",
+    input: {
+      taskId: z.string().min(1),
+      version: z.number().int().min(1),
+      type: z.string().min(1).max(40).optional(),
+      title: z.string().min(1).max(200).optional(),
+      brief: z.string().max(20_000).optional(),
+      priority: z.number().int().min(0).max(3).optional(),
+      dueAt: iso.nullable().optional(),
+    },
+    annotations: WRITE_IDEMPOTENT,
+    toRequest: ({ taskId, ...body }) => ({ method: "PATCH", path: `/tasks/${encodeURIComponent(taskId)}`, body }),
+  }),
+  define({
+    name: "save_content",
+    description:
+      "Enregistre le texte final d'une tâche pour un canal (nouvelle version de contenu ; l'historique est conservé). Invalide une approbation en cours. Requiert content.write.",
+    input: {
+      taskId: z.string().min(1),
+      channel: z.string().min(1).max(40).describe("linkedin, facebook, instagram, blog, newsletter…"),
+      body: z.string().min(1).max(100_000),
+      aiAssisted: z.boolean().optional().describe("true si le texte a été rédigé avec une IA"),
+      idempotencyKey,
+    },
+    annotations: WRITE,
+    toRequest: ({ taskId, idempotencyKey: key, ...body }) => ({
+      method: "POST",
+      path: `/tasks/${encodeURIComponent(taskId)}/versions`,
+      body,
+      idempotencyKey: key,
+    }),
+  }),
+  define({
+    name: "list_visual_formats",
+    description: "Formats de visuels disponibles (tailles, mises en page) : id à passer en formatId de render_visual.",
+    input: {},
+    annotations: READ,
+    toRequest: () => ({ method: "GET", path: "/visual-formats" }),
+  }),
+  define({
+    name: "render_visual",
+    description:
+      "Génère et attache un visuel à la tâche avec le kit de marque approuvé du produit. Invalide une approbation en cours. Requiert content.write.",
+    input: {
+      taskId: z.string().min(1),
+      formatId: z.string().min(1).max(40).describe("id issu de list_visual_formats"),
+      title: z.string().max(200).optional().describe("Par défaut : le titre de la tâche"),
+      subtitle: z.string().max(300).optional(),
+      brief: z.string().max(2_000).optional(),
+      idempotencyKey,
+    },
+    annotations: WRITE,
+    toRequest: ({ taskId, idempotencyKey: key, ...body }) => ({
+      method: "POST",
+      path: `/tasks/${encodeURIComponent(taskId)}/visuals`,
+      body,
+      idempotencyKey: key,
+    }),
+  }),
+  define({
+    name: "move_task",
+    description:
+      "Fait avancer une tâche dans le flux : preparing → reviewing (soumettre en relecture) → visuals → awaiting_approval (demander l'approbation). Les états permis sont dans allowedTransitions de get_task.",
+    input: {
+      taskId: z.string().min(1),
+      to: z.enum(TASK_STATES),
+      reason: z.string().max(2_000).nullable().optional(),
+      idempotencyKey,
+    },
+    annotations: WRITE,
+    toRequest: ({ taskId, idempotencyKey: key, ...body }) => ({
+      method: "POST",
+      path: `/tasks/${encodeURIComponent(taskId)}/transitions`,
+      body,
+      idempotencyKey: key,
+    }),
+  }),
+  define({
+    name: "add_comment",
+    description: "Ajoute un commentaire à une tâche (consignes, retours de relecture).",
+    input: { taskId: z.string().min(1), body: z.string().min(1).max(10_000), idempotencyKey },
+    annotations: WRITE,
+    toRequest: ({ taskId, idempotencyKey: key, ...body }) => ({
+      method: "POST",
+      path: `/tasks/${encodeURIComponent(taskId)}/comments`,
+      body,
+      idempotencyKey: key,
+    }),
   }),
   define({
     name: "decide_approval",
