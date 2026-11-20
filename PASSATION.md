@@ -554,3 +554,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - PR #59 (fix/mcp-bearer-origin) : JWT Trigenys Auth sans cookie exempté du contrôle d'origine ; cookie / session Better Auth toujours contrôlés. check 0, 221/221 en série.
 - 4 tests échouent en parallèle (timeouts PGlite) aussi sur main : préexistant, charge machine.
 - Reste : fusion + déploiement (accord requis), puis relancer la connexion dans ChatGPT.
+
+## 2026-11-20 09:59 — PR #59 fusionnée et déployée
+- #59 squash-mergée (18842e8), run appfactory-infrastructure 44706588384 : succès (Neon + Worker).
+- Contrôle prod : /mcp anonyme avec Origin chatgpt.com -> 401 (attendu), PRM -> 200.
+- wrangler tail filtré en cours (scratchpad tail.log) pour voir l'appel ChatGPT authentifié.
+- Prochaine étape : l'utilisateur relance la connexion dans ChatGPT ; attendu : POST /mcp 200 avec origin=chatgpt.com auth=yes. Si échec, lire tail.log (statut, méthode GET/POST).
