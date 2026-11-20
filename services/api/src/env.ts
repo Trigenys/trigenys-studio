@@ -31,6 +31,12 @@ export type Bindings = {
   OIDC_ORGS?: string;
   OIDC_APP?: string;
   OIDC_SCOPES?: string;
+  // Directory sync from Trigenys Auth (client_credentials, scope `directory`):
+  // enabled when OIDC_ISSUER and DIRECTORY_CLIENT_SECRET (Worker secret) are
+  // set. DIRECTORY_URL defaults to {OIDC_ISSUER}/api/auth/directory.
+  DIRECTORY_CLIENT_ID?: string;
+  DIRECTORY_CLIENT_SECRET?: string;
+  DIRECTORY_URL?: string;
   INTEGRATION_PUBLISHER_MODE?: IntegrationMode;
   INTEGRATION_CMS_MODE?: IntegrationMode;
   INTEGRATION_RADAR_MODE?: IntegrationMode;

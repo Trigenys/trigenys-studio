@@ -25,6 +25,7 @@ import { objectiveRoutes } from "./routes/objectives.ts";
 import { reportRoutes } from "./routes/reports.ts";
 import { dossierRoutes } from "./routes/dossier.ts";
 import { taskRoutes } from "./routes/tasks.ts";
+import { directoryRoutes } from "./routes/directory.ts";
 import { MCP_PATH, mcpHandler, mcpOriginGuard, mcpRequireSession } from "./mcp/route.ts";
 import { VERSION } from "./version.ts";
 
@@ -159,6 +160,7 @@ export function createApp(deps: AppDeps = {}) {
   app.use("*", sessionMiddleware);
   app.route("/", meRoutes);
   app.route("/", roleRoutes);
+  app.route("/", directoryRoutes);
   app.route("/", productRoutes);
   app.route("/", taskRoutes);
   app.route("/", dossierRoutes);
