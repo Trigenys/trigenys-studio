@@ -505,3 +505,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - #58 fusionnée sur main (92157e3, squash, branche supprimée). OAuth MCP via trigenys-auth actif dès le prochain déploiement.
 - Déploiement non lancé : `gh workflow run appfactory-infrastructure.yml --repo Trigenys/trigenys-studio --ref main` attend l'accord explicite de l'utilisateur.
 - Après déploiement : vérifier `GET /.well-known/oauth-protected-resource/mcp` (200, issuer auth.trigenys.com) et `POST /mcp` sans jeton (401 + resource_metadata), puis connecteur claude.ai (Client ID `trigenys-studio`, secret vide).
+
+## 2026-11-20 07:09 — MCP OAuth via trigenys-auth déployé en production
+
+- Run appfactory-infrastructure 44683914459 (92157e3) : migrations Neon (0011) + Worker OK.
+- Prod vérifiée : PRM `/.well-known/oauth-protected-resource/mcp` 200 (authorization_servers auth.trigenys.com) ; `POST /mcp` sans jeton → 401 `resource_metadata` ; JWT forgé → 401 `error="invalid_token"` (découverte + JWKS de trigenys-auth joignables, pas de 503).
+- Reste : test réel du connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) par l'utilisateur ; puis API annuaire trigenys-auth + synchro, connexion web genericOAuth, affectation test à Tiffany. PR #50 ouverte.
