@@ -566,3 +566,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Message ChatGPT « This account is already connected » : une connexion existe déjà côté ChatGPT (tentatives de 08:34/08:38) ; ChatGPT refuse le doublon avant tout appel MCP.
 - Action utilisateur : ChatGPT → Paramètres → Applications → Trigenys Studio → déconnecter, puis reconnecter.
 - wrangler tail élargi à toutes les routes (scratchpad tail.log) pour voir le premier appel après reconnexion.
+
+## 2026-11-20 10:45 — ChatGPT : 500 sur /mcp après OAuth
+
+- PR #59 (origine des jetons OAuth) fusionnée et déployée. L'OAuth ChatGPT aboutit (refresh token émis, ressource /mcp, compte Trigenys).
+- Ensuite `POST /mcp` avec jeton (`openai-mcp/1.0.0`) → 500, journal `["Error",""]` : une `HTTPException` du transport `@hono/mcp` masquée par `app.onError`.
+- PR #60 (`fix/mcp-transport-errors`) : renvoie la réponse du transport (4xx JSON-RPC) et journalise statut + en-têtes de négociation. Sonde locale : toutes les variantes initialize passent ; seule une version de protocole > 2025-11-25 sur un appel non-initialize donne 400 (SDK 1.32.2 = dernier).
+- Suite : fusion + déploiement (accord requis), reconnexion ChatGPT, lire le relevé `wrangler tail` pour la cause exacte, la corriger.
