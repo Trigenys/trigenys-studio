@@ -98,12 +98,12 @@ describe("configuration", () => {
 describe("MCP as a protected resource of Trigenys Auth", () => {
   let h: Harness;
   let seq = 0;
-  const rpc = (bearer?: string) =>
+  const rpc = (bearer?: string, headers: Record<string, string> = {}) =>
     h.request(
       "/mcp",
       {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...headers },
         body: JSON.stringify({ jsonrpc: "2.0", id: ++seq, method: "tools/list", params: {} }),
       },
       bearer,
@@ -228,6 +228,14 @@ describe("MCP as a protected resource of Trigenys Auth", () => {
       .where(and(eq(roleAssignment.userId, userId), eq(roleAssignment.source, "idp")));
     const res = await h.request(`/roles/${row!.id}`, { method: "DELETE" }, admin);
     expect(res.status).toBe(409);
+  });
+
+  it("accepts an OAuth token from a hosted client's own origin, still guards sessions", async () => {
+    const jwt = await token({ sub: "idp-tiffany", roles: ["operator"] });
+    expect((await rpc(jwt, { origin: "https://chatgpt.com" })).status).toBe(200);
+    expect((await rpc(jwt, { origin: "https://chatgpt.com", cookie: "a=b" })).status).toBe(403);
+    const session = await h.signIn("operator@trigenys.test");
+    expect((await rpc(session, { origin: "https://chatgpt.com" })).status).toBe(403);
   });
 
   it("keeps Better Auth bearer sessions working next to OAuth tokens", async () => {
