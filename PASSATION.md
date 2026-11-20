@@ -483,3 +483,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Session dédiée « Déployer trigenys-auth et y reprendre l'équipe » (local_2a1ff2a9-…) : Trigenys/trigenys-auth#9 (import d'équipe idempotent, CLI migrate, clients OAuth `trigenys-studio`/`trigenys-sign`, port 8793). DNS `auth.trigenys.com` chez Spaceship à pointer sur 15.235.90.215 ; déploiement VPS sur accord explicite. Question en cours : connexion par lien magique au lieu du mot de passe dans trigenys-auth.
 - Côté Studio, à faire après : Studio client OIDC de trigenys-auth (rôles via claim `roles`), OAuth 2.1 du MCP adossé à trigenys-auth ; l'octroi de rôle par e-mail est mis en attente.
 - Tiffany : en attente de trigenys-auth.
+
+## 2026-11-20 05:33 — MCP OAuth 2.1 adossé à trigenys-auth (plan)
+
+- trigenys-auth en prod (issuer `https://auth.trigenys.com`, RFC 8414 et OIDC discovery 200, PKCE S256, pas de DCR). Client public `trigenys-studio` déclaré (redirect claude.ai, resource `…workers.dev/mcp`, rôles admin/operator/reviewer).
+- Plan retenu (architecte) : `/mcp` = ressource OAuth (PRM RFC 9728, 401 `WWW-Authenticate`), validation JWT `at+jwt` via `jose` (JWKS en cache), liaison `account(providerId=trigenys-auth, accountId=sub)`, rôles du jeton copiés dans `role_assignment` avec `source='idp'` (globaux), bearer Better Auth inchangé. Fonction inactive tant que `OIDC_ISSUER` est vide.
+- Verrou : restreindre aux orgs autorisées (`OIDC_ORGS`), sinon un membre d'une autre org deviendrait operator.
+- Ensuite : API annuaire dans trigenys-auth + sync (assignable avant 1re connexion), puis connexion web via `genericOAuth`.
+- Branche d'implémentation : `feat/mcp-oauth-trigenys-auth` depuis origin/main.
