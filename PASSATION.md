@@ -600,3 +600,12 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
   - Nouveaux outils MCP : list_products, update_task, save_content, list_visual_formats, render_visual, move_task, add_comment.
 - **Lectures vides en prod** : des 200 vides, pas des 403. La base de prod est vide (aucun produit, compte social ni tâche).
 - **Suite** : PR des deux branches → fusion et déploiement sur accord → secrets → assignation de test à Tiffany (e-mail + WhatsApp « Trigenys Comm »).
+
+## 2026-11-20 11:35 — PR ouvertes (annuaire, rapport, outils MCP)
+
+- Trigenys/trigenys-studio#61 : correctif du 500 du rapport et outils MCP d'édition (223/223, tsc 0, LESSON-STUDIO-2026-014).
+- Trigenys/trigenys-studio#62 : import de l'équipe depuis l'annuaire Trigenys Auth.
+- Trigenys/trigenys-auth#19 : endpoint annuaire `client_credentials`.
+- Rien n'est fusionné ni déployé ; aucun changement sur le VPS.
+- Ordre : secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` sur le VPS (accord requis) → fusion et déploiement de auth#19 → secret Worker `DIRECTORY_CLIENT_SECRET` → fusion de #61 et #62 → déploiement Studio → `POST /directory/sync` → assignation de test à Tiffany.
+- La base de prod est vide : il faut créer au moins un produit avant une tâche.
