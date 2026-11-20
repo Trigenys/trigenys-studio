@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import type { AuthConfig } from "../../src/auth/auth.ts";
+import type { OidcConfig } from "../../src/auth/oidc.ts";
 import { createApp } from "../../src/app.ts";
 import type { Db } from "../../src/db/client.ts";
 import type { Bindings } from "../../src/env.ts";
@@ -21,13 +22,20 @@ export const authConfig: AuthConfig = {
 
 // A fresh in-memory Postgres per harness, migrated with the committed SQL so
 // the migrations themselves are exercised by every test run.
-export async function createHarness(options: { integrations?: Partial<Integrations>; env?: Partial<Bindings> } = {}) {
+export async function createHarness(
+  options: { integrations?: Partial<Integrations>; env?: Partial<Bindings>; oidc?: OidcConfig | null } = {},
+) {
   const client = new PGlite();
   const db = drizzle({ client, schema }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
   const mailer = new MockMailer();
   const media = new MemoryMediaStore();
-  const app = createApp({ db, authConfig, integrations: { email: mailer, media, ...options.integrations } });
+  const app = createApp({
+    db,
+    authConfig,
+    oidc: options.oidc,
+    integrations: { email: mailer, media, ...options.integrations },
+  });
 
   const request = (path: string, init: RequestInit = {}, token?: string) => {
     const headers = new Headers(init.headers);
