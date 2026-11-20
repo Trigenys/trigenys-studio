@@ -541,3 +541,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - dd4ab4f sur main de trigenys-auth : procédure de déploiement avec `--force-recreate` + contrôle d'image. Docs seulement, pas de redéploiement nécessaire (VPS sur 32c2805).
 - Reste : test ChatGPT réel par l'utilisateur ; ensuite API annuaire trigenys-auth (client_credentials) puis sync Studio.
+
+## 2026-11-20 09:27 — Connecteur ChatGPT : description et icône
+
+- Serveur prêt (trigenys-auth 32c2805 déployé, URI `https://chatgpt.com/connector_platform_oauth_redirect` acceptée). L'utilisateur crée le connecteur sur chatgpt.com/plugins : URL `/mcp` du Worker, OAuth, Client ID `trigenys-studio`, sans secret.
+- Icône retenue : hélice binaire Trigenys (motif du logo groupe et de l'icône Auth) en bits « 1 »/« 0 » sarcelle et rose sur le bordeaux Studio. Fichiers `~/Downloads/trigenys-studio-icon-helice.{png,svg}` (512×512), hors dépôt.
+- Prochaine étape : résultat du test ChatGPT ; si l'URI de retour affichée diffère, l'ajouter dans `trigenys-auth/deploy/clients.production.json` (PR + déploiement sur accord).
