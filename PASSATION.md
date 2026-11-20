@@ -536,3 +536,8 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 
 - Trigenys/trigenys-auth#18 (`docs/deploy-force-recreate`) : `deploy/README.md` impose `up -d --no-deps --force-recreate auth` + contrôle d'ID d'image (doit afficher OK) ; leçon ajoutée dans `docs/engineering/lessons-learned.md`. Docs seulement.
 - Verrou : fusion sur accord explicite. Reste aussi : test ChatGPT réel par l'utilisateur.
+
+## 2026-11-20 09:03 — trigenys-auth#18 fusionnée
+
+- dd4ab4f sur main de trigenys-auth : procédure de déploiement avec `--force-recreate` + contrôle d'image. Docs seulement, pas de redéploiement nécessaire (VPS sur 32c2805).
+- Reste : test ChatGPT réel par l'utilisateur ; ensuite API annuaire trigenys-auth (client_credentials) puis sync Studio.
