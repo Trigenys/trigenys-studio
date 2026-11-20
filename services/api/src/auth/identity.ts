@@ -49,22 +49,22 @@ export async function resolveOidcUser(
     const [row] = await db.select({ id: user.id }).from(user).where(sql`lower(${user.email}) = ${email}`);
     userId = row!.id;
   }
-  await db
-    .insert(account)
-    .values({
-      id: crypto.randomUUID(),
-      providerId: IDP_PROVIDER_ID,
-      accountId: claims.sub,
-      userId,
-      updatedAt: new Date(),
-    })
-    .onConflictDoNothing();
-  const resolved = await findLinked(db, claims.sub);
+  const resolved = await linkIdentity(db, claims.sub, userId);
   if (!resolved) throw new ProblemError(500, "Identity link failed");
   return resolved;
 }
 
-async function findLinked(db: Db, sub: string): Promise<StudioUser | null> {
+// Writes the (providerId, sub) account row once; a concurrent writer wins
+// silently and the link is read back.
+export async function linkIdentity(db: Db, sub: string, userId: string): Promise<StudioUser | null> {
+  await db
+    .insert(account)
+    .values({ id: crypto.randomUUID(), providerId: IDP_PROVIDER_ID, accountId: sub, userId, updatedAt: new Date() })
+    .onConflictDoNothing();
+  return findLinked(db, sub);
+}
+
+export async function findLinked(db: Db, sub: string): Promise<StudioUser | null> {
   const [row] = await db
     .select({ id: user.id, email: user.email, name: user.name })
     .from(account)

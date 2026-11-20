@@ -1,3 +1,4 @@
+import { directoryConfigFromEnv, fetchDirectory, syncDirectory, type DirectoryReport } from "../auth/directory.ts";
 import { dispatchNotifications, type NotifyReport } from "../alerts/notify.ts";
 import { reconcileAlerts, type ReconcileReport } from "../alerts/reconcile.ts";
 import { DEFAULT_ALERT_TUNING, type AlertTuning } from "../alerts/rules.ts";
@@ -82,4 +83,19 @@ export async function runScheduledAlerts(env: Bindings): Promise<{ reconcile: Re
   const notify = await dispatchNotifications({ db, mailer: email, whatsapp, webAppUrl: webAppUrl(env) });
   console.log("notifications", JSON.stringify(notify));
   return { reconcile, notify };
+}
+
+// Team import from Trigenys Auth on the same cron. Not configured is a logged
+// no-op; the report holds counts and `sub`s only, never e-mails.
+export async function runScheduledDirectory(env: Bindings): Promise<DirectoryReport | null> {
+  const config = directoryConfigFromEnv(env);
+  if (!config) {
+    console.log("directory skipped", JSON.stringify({ reason: "not configured" }));
+    return null;
+  }
+  if (!env.HYPERDRIVE) throw new Error("HYPERDRIVE binding is required for the scheduled directory sync");
+  const db = createDb(env.HYPERDRIVE.connectionString);
+  const report = await syncDirectory(db, await fetchDirectory(config), crypto.randomUUID());
+  console.log("directory", JSON.stringify(report));
+  return report;
 }
