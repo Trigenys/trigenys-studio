@@ -580,3 +580,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Cause : ChatGPT sonde d'abord `POST /mcp` avec `mcp-protocol-version: 2026-07-28` (non supportée par le SDK 1.32.2, le plus récent). Le refus 400 du transport était masqué en 500, et ChatGPT abandonnait. Avec un 400, il se replie sur la poignée de main classique : initialize 200, notifications 202, tools/list 200 (relevé à 10:04 UTC).
 - Piège : `wrangler tail` décroche à chaque déploiement, il faut le relancer.
 - Suite : confirmer côté ChatGPT que le plugin est connecté et que les outils répondent. Prendre en charge 2026-07-28 quand le SDK MCP le fera.
+
+## 2026-11-20 11:08 — Connecteur ChatGPT OK, assignation test à Tiffany bloquée
+
+- PR #60 (refus du transport MCP renvoyés tels quels au lieu d'un 500) fusionnée et déployée ; ChatGPT connecté au Studio via Trigenys Auth.
+- Assignation test : Tiffany n'est pas un utilisateur Studio (list_assignees ne renvoie que l'admin).
+- Trigenys Auth : Tiffany est membre de l'org trigenys mais son e-mail n'est pas vérifié, et aucun appRoleAssignment n'existe pour trigenys-studio (personne).
+- Conséquence : sa première connexion OIDC/MCP serait refusée (403, e-mail non vérifié), et sans rôle elle ne serait pas assignable.
+- Prochaine étape proposée : synchronisation de l'annuaire Trigenys Auth → Studio (membres de l'org → utilisateurs Studio + rôles), puis create_task assigné à Tiffany pour tester e-mail + WhatsApp « Trigenys Comm ».
