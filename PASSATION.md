@@ -615,3 +615,11 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Trigenys/trigenys-studio#61 fusionnée (936b609) : correctif du 500 du rapport et outils MCP d'édition. **Pas encore déployée** : il faut l'accord explicite pour le déploiement.
 - Toujours ouvertes : studio#62 et auth#19 (secret VPS d'abord, voir l'entrée précédente).
 - Suite : `gh workflow run appfactory-infrastructure.yml --ref main`, puis rappeler `get_editorial_report` via MCP (on attend un 200).
+
+## 2026-11-20 11:43 — #61 en production
+
+- Run 44721146117 réussi (migrations Neon + Worker) sur 936b609.
+- `get_editorial_report` 2026-11 renvoie 200 via MCP. Le 500 est corrigé.
+- Correction de l'entrée précédente : la prod contient **3 produits** (atelier, precis, insight). Ce sont les tâches, les comptes sociaux et les imports qui sont vides, pas les produits.
+- Les clients MCP doivent rafraîchir la liste d'outils (reconnexion) pour voir les 7 nouveaux outils.
+- Restent ouvertes : studio#62 et auth#19. Le secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` doit aller sur le VPS d'abord (accord requis).
