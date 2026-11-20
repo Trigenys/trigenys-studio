@@ -573,3 +573,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Ensuite `POST /mcp` avec jeton (`openai-mcp/1.0.0`) → 500, journal `["Error",""]` : une `HTTPException` du transport `@hono/mcp` masquée par `app.onError`.
 - PR #60 (`fix/mcp-transport-errors`) : renvoie la réponse du transport (4xx JSON-RPC) et journalise statut + en-têtes de négociation. Sonde locale : toutes les variantes initialize passent ; seule une version de protocole > 2025-11-25 sur un appel non-initialize donne 400 (SDK 1.32.2 = dernier).
 - Suite : fusion + déploiement (accord requis), reconnexion ChatGPT, lire le relevé `wrangler tail` pour la cause exacte, la corriger.
+
+## 2026-11-20 11:05 — ChatGPT : cause du 500 trouvée, connexion MCP aboutie
+
+- PR #60 fusionnée (384d87f) et déployée (run 44714884137).
+- Cause : ChatGPT sonde d'abord `POST /mcp` avec `mcp-protocol-version: 2026-07-28` (non supportée par le SDK 1.32.2, le plus récent). Le refus 400 du transport était masqué en 500, et ChatGPT abandonnait. Avec un 400, il se replie sur la poignée de main classique : initialize 200, notifications 202, tools/list 200 (relevé à 10:04 UTC).
+- Piège : `wrangler tail` décroche à chaque déploiement, il faut le relancer.
+- Suite : confirmer côté ChatGPT que le plugin est connecté et que les outils répondent. Prendre en charge 2026-07-28 quand le SDK MCP le fera.
