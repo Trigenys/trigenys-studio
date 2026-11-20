@@ -623,3 +623,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Correction de l'entrée précédente : la prod contient **3 produits** (atelier, precis, insight). Ce sont les tâches, les comptes sociaux et les imports qui sont vides, pas les produits.
 - Les clients MCP doivent rafraîchir la liste d'outils (reconnexion) pour voir les 7 nouveaux outils.
 - Restent ouvertes : studio#62 et auth#19. Le secret `TRIGENYS_STUDIO_DIRECTORY_SECRET` doit aller sur le VPS d'abord (accord requis).
+
+## 2026-11-20 11:45 — Secret annuaire posé sur le VPS
+
+- `TRIGENYS_STUDIO_DIRECTORY_SECRET` a été ajouté à `~/trigenys-auth/.env` sur le VPS (mode 600, jamais affiché). Il est lu via `env_file`, et une sauvegarde `.env.bak-<date>` a été faite.
+- Le conteneur n'a pas été recréé : il est toujours `healthy` et la découverte OIDC publique répond 200.
+- Pour poser la même valeur côté Studio sans l'afficher, la lire par ssh et la passer par pipe à `wrangler secret put DIRECTORY_CLIENT_SECRET`. Accord requis.
+- Suite : fusion et déploiement de auth#19 (révision `feat/directory-members`), puis fusion de studio#62, déploiement Studio, `POST /directory/sync`, et assignation de test à Tiffany.
