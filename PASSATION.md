@@ -547,3 +547,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Serveur prêt (trigenys-auth 32c2805 déployé, URI `https://chatgpt.com/connector_platform_oauth_redirect` acceptée). L'utilisateur crée le connecteur sur chatgpt.com/plugins : URL `/mcp` du Worker, OAuth, Client ID `trigenys-studio`, sans secret.
 - Icône retenue : hélice binaire Trigenys (motif du logo groupe et de l'icône Auth) en bits « 1 »/« 0 » sarcelle et rose sur le bordeaux Studio. Fichiers `~/Downloads/trigenys-studio-icon-helice.{png,svg}` (512×512), hors dépôt.
 - Prochaine étape : résultat du test ChatGPT ; si l'URI de retour affichée diffère, l'ajouter dans `trigenys-auth/deploy/clients.production.json` (PR + déploiement sur accord).
+
+## 2026-11-20 09:53 — Connecteur ChatGPT : 403 du garde d'origine MCP
+- OAuth ChatGPT OK côté trigenys-auth (jetons émis, bonne ressource, même utilisateur que Claude) ; échec à l'appel /mcp.
+- Cause probable : ChatGPT envoie `Origin: https://chatgpt.com` ; `mcpOriginGuard` refusait (403) toute origine hors AUTH_TRUSTED_ORIGINS.
+- PR #59 (fix/mcp-bearer-origin) : JWT Trigenys Auth sans cookie exempté du contrôle d'origine ; cookie / session Better Auth toujours contrôlés. check 0, 221/221 en série.
+- 4 tests échouent en parallèle (timeouts PGlite) aussi sur main : préexistant, charge machine.
+- Reste : fusion + déploiement (accord requis), puis relancer la connexion dans ChatGPT.
