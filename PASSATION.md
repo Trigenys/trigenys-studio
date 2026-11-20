@@ -511,3 +511,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Run appfactory-infrastructure 44683914459 (92157e3) : migrations Neon (0011) + Worker OK.
 - Prod vérifiée : PRM `/.well-known/oauth-protected-resource/mcp` 200 (authorization_servers auth.trigenys.com) ; `POST /mcp` sans jeton → 401 `resource_metadata` ; JWT forgé → 401 `error="invalid_token"` (découverte + JWKS de trigenys-auth joignables, pas de 503).
 - Reste : test réel du connecteur claude.ai (URL `/mcp`, Client ID `trigenys-studio`, secret vide) par l'utilisateur ; puis API annuaire trigenys-auth + synchro, connexion web genericOAuth, affectation test à Tiffany. PR #50 ouverte.
+
+## 2026-11-20 08:30 — Connecteur claude.ai validé, ChatGPT à préparer
+
+- Connecteur MCP Studio ajouté dans claude.ai (client `trigenys-studio`, connexion Trigenys Auth) : appel `list_tasks` authentifié OK (liste vide).
+- ChatGPT : trigenys-auth annonce `authorization_response_iss_parameter_supported: true` → ChatGPT utilisera l'URI stable `https://chatgpt.com/connector_platform_oauth_redirect`. DCR désactivé (`allowDynamicClientRegistration: false`) → client statique.
+- Prochaine étape (sur accord) : PR trigenys-auth ajoutant cette URI à `redirectUris` du client `trigenys-studio` dans `deploy/clients.production.json`, puis déploiement trigenys-auth ; côté ChatGPT : mode développeur, URL `…/mcp`, OAuth, Client ID `trigenys-studio`, secret vide.
+- Écran « Soumissions » (Pack de plug-ins / Connecteur MCP) de l'app Claude = publication dans un annuaire : inutile ici.
