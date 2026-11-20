@@ -560,3 +560,9 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Contrôle prod : /mcp anonyme avec Origin chatgpt.com -> 401 (attendu), PRM -> 200.
 - wrangler tail filtré en cours (scratchpad tail.log) pour voir l'appel ChatGPT authentifié.
 - Prochaine étape : l'utilisateur relance la connexion dans ChatGPT ; attendu : POST /mcp 200 avec origin=chatgpt.com auth=yes. Si échec, lire tail.log (statut, méthode GET/POST).
+
+## 2026-11-20 10:04 — ChatGPT : « This account is already connected »
+- Après #59 : ChatGPT obtient des jetons (09:02:48 et 09:02:59 UTC) pour le compte Trigenys PlHHV6 (@trigenys.com, même que Claude) mais n'appelle pas /mcp.
+- Message ChatGPT « This account is already connected » : une connexion existe déjà côté ChatGPT (tentatives de 08:34/08:38) ; ChatGPT refuse le doublon avant tout appel MCP.
+- Action utilisateur : ChatGPT → Paramètres → Applications → Trigenys Studio → déconnecter, puis reconnecter.
+- wrangler tail élargi à toutes les routes (scratchpad tail.log) pour voir le premier appel après reconnexion.
