@@ -53,7 +53,13 @@
     // Web app origin(s), comma-separated; empty until the web app is deployed.
     "AUTH_TRUSTED_ORIGINS": "https://trigenys-studio-api.lawrynnjennifer.workers.dev",
     "WEB_APP_URL": "https://trigenys-studio-api.lawrynnjennifer.workers.dev",
-    "PASSKEY_RP_NAME": "Trigenys Studio"
+    "PASSKEY_RP_NAME": "Trigenys Studio",
+    // MCP over OAuth 2.1: tokens issued by Trigenys Auth for this resource,
+    // client "trigenys-studio" (public, PKCE), members of the listed orgs only.
+    "OIDC_ISSUER": "https://auth.trigenys.com",
+    "OIDC_RESOURCE": "https://trigenys-studio-api.lawrynnjennifer.workers.dev/mcp",
+    "OIDC_ORGS": "trigenys",
+    "OIDC_APP": "trigenys-studio"
   },
   // AppFactory replaces this placeholder (exactly once) with the managed
   // Hyperdrive id in a temporary copy at deploy time; the file is never rewritten.

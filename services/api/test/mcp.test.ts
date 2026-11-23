@@ -94,6 +94,15 @@ describe("transport", () => {
     expect(res.headers.get("allow")).toBe("POST");
   });
 
+  it("passes the transport refusals through instead of a 500", async () => {
+    const version = await rpc("tools/list", {}, operator, { "mcp-protocol-version": "1999-01-01" });
+    expect(version.status).toBe(400);
+    expect((await parse(version)).error.message).toContain("Unsupported protocol version");
+    const accept = await rpc("tools/list", {}, operator, { accept: "text/html" });
+    expect(accept.status).toBe(406);
+    expect((await parse(accept)).jsonrpc).toBe("2.0");
+  });
+
   it("initializes statelessly with JSON responses", async () => {
     const res = await rpc(
       "initialize",
@@ -171,6 +180,37 @@ describe("tools replay the routes with the caller's rights", () => {
     const reviewerTry = await call("schedule_task", { ...args, idempotencyKey: "mcp-plan-2" }, reviewer);
     expect(reviewerTry.isError).toBe(true);
     expect(payload(reviewerTry).status).toBe(403);
+  });
+
+  it("drives a task from the brief to the review with tools only", async () => {
+    const products = payload(await call("list_products", {}, operator));
+    expect(products.map((p: { id: string }) => p.id)).toContain("insight");
+
+    const created = payload(await call("create_task", { productId: "insight", type: "post", title: "Bout en bout" }, operator));
+    const id = created.id as string;
+    expect((await call("move_task", { taskId: id, to: "preparing" }, operator)).isError).toBeUndefined();
+
+    const text = { taskId: id, channel: "linkedin", body: "Texte final", idempotencyKey: "mcp-text-1" };
+    const saved = await call("save_content", text, operator);
+    expect(saved.isError).toBeUndefined();
+    expect(payload(await call("save_content", text, operator)).id).toBe(payload(saved).id);
+
+    const detail = payload(await call("get_task", { taskId: id }, operator));
+    expect(detail.latestVersion).toMatchObject({ body: "Texte final", channel: "linkedin" });
+    const updated = await call("update_task", { taskId: id, version: detail.version, brief: "Angle : retours clients" }, operator);
+    expect(payload(updated)).toMatchObject({ brief: "Angle : retours clients" });
+    const stale = await call("update_task", { taskId: id, version: detail.version, title: "Trop tard" }, operator);
+    expect(payload(stale).status).toBe(409);
+
+    expect((await call("add_comment", { taskId: id, body: "Prêt pour relecture" }, operator)).isError).toBeUndefined();
+    expect((await call("move_task", { taskId: id, to: "reviewing" }, operator)).isError).toBeUndefined();
+    expect(await taskState(id)).toBe("reviewing");
+
+    // Visuals replay the route too: without an approved brand kit it refuses.
+    expect(Array.isArray(payload(await call("list_visual_formats", {}, operator)))).toBe(true);
+    const visual = await call("render_visual", { taskId: id, formatId: "linkedin-square" }, operator);
+    expect(visual.isError).toBe(true);
+    expect([409, 422, 503]).toContain(payload(visual).status);
   });
 
   it("acknowledges alerts and reads the editorial report", async () => {

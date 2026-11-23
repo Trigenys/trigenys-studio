@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import type { AuthConfig } from "../../src/auth/auth.ts";
+import type { OidcConfig } from "../../src/auth/oidc.ts";
 import { createApp } from "../../src/app.ts";
 import type { Db } from "../../src/db/client.ts";
 import type { Bindings } from "../../src/env.ts";
@@ -19,15 +20,35 @@ export const authConfig: AuthConfig = {
   rpName: "Trigenys Studio (test)",
 };
 
+// Production runs drizzle's postgres-js driver, which turns its date
+// serialisers off: a JS Date reaches Postgres only through a timestamp column
+// (mapped to ISO). A Date bound anywhere else (a `sql` alias, a raw fragment)
+// is sent as `String(date)` and rejected, while PGlite accepts it. Fail here
+// as production would.
+const rawDateGuard = {
+  logQuery(query: string, params: unknown[]) {
+    if (params.some((p) => p instanceof Date)) {
+      throw new Error(`Raw Date parameter (pass an ISO string or compare a timestamp column): ${query}`);
+    }
+  },
+};
+
 // A fresh in-memory Postgres per harness, migrated with the committed SQL so
 // the migrations themselves are exercised by every test run.
-export async function createHarness(options: { integrations?: Partial<Integrations>; env?: Partial<Bindings> } = {}) {
+export async function createHarness(
+  options: { integrations?: Partial<Integrations>; env?: Partial<Bindings>; oidc?: OidcConfig | null } = {},
+) {
   const client = new PGlite();
-  const db = drizzle({ client, schema }) as unknown as Db;
+  const db = drizzle({ client, schema, logger: rawDateGuard }) as unknown as Db;
   await migrate(db as never, { migrationsFolder: "./drizzle", migrationsTable: "drizzle_migrations", migrationsSchema: "drizzle" });
   const mailer = new MockMailer();
   const media = new MemoryMediaStore();
-  const app = createApp({ db, authConfig, integrations: { email: mailer, media, ...options.integrations } });
+  const app = createApp({
+    db,
+    authConfig,
+    oidc: options.oidc,
+    integrations: { email: mailer, media, ...options.integrations },
+  });
 
   const request = (path: string, init: RequestInit = {}, token?: string) => {
     const headers = new Headers(init.headers);

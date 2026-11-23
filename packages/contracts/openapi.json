@@ -243,6 +243,13 @@
               "null"
             ]
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "idp"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -254,6 +261,7 @@
           "role",
           "productId",
           "grantedBy",
+          "source",
           "createdAt"
         ]
       },
@@ -284,6 +292,56 @@
         "required": [
           "userId",
           "role"
+        ]
+      },
+      "DirectoryReport": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "integer"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "linked": {
+            "type": "integer"
+          },
+          "renamed": {
+            "type": "integer"
+          },
+          "rolesChanged": {
+            "type": "integer"
+          },
+          "withdrawn": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sub": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sub",
+                "reason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "members",
+          "created",
+          "linked",
+          "renamed",
+          "rolesChanged",
+          "withdrawn",
+          "skipped"
         ]
       },
       "Product": {
@@ -3579,6 +3637,85 @@
           },
           "404": {
             "description": "Unknown assignment",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Assignment managed by Trigenys Auth",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directory/sync": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Import the Trigenys Auth team now (admin, audited)",
+        "description": "Runs the directory sync the cron runs every few minutes: members of the configured organisations become Studio users linked to their Trigenys Auth identity, with the roles granted there.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sync report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an admin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Trigenys Auth refused or failed the listing",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Directory sync not configured",
             "content": {
               "application/problem+json": {
                 "schema": {

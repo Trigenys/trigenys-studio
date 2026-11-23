@@ -201,7 +201,21 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 
 **Leçon généralisée** — Tout nouveau point d'entrée vers une ressource déjà durcie réutilise le helper de connexion existant, pas la valeur brute ; et une erreur expurgée garde un identifiant sûr (code) pour rester diagnosticable.
 
-### LESSON-STUDIO-2026-014 — Un stockage simulé partagé en test masque un stockage vide à chaque requête
+### LESSON-STUDIO-2026-014 — Un `Date` lié à une expression `sql` part en texte brut en production
+
+**Contexte** — Première lecture du rapport éditorial (`get_editorial_report`) depuis un client MCP sur la production.
+
+**Failure / near miss** — HTTP 500 à chaque appel. Les logs du Worker montrent « Failed query » sur la requête des publications (`first_published`). Les tests (PGlite) passent.
+
+**Cause racine** — Le driver postgres-js de Drizzle désactive ses sérialiseurs de dates. Un `Date` n'est converti en ISO que par le mapper d'une colonne `timestamp`. Comparé à un alias (`min(created_at) as published_at`) ou à un `coalesce(sent_at, scheduled_at)`, il est envoyé en `String(date)`, que Postgres refuse. PGlite accepte ce format, donc les tests ne le voyaient pas.
+
+**Résolution** — Les bornes de ces deux comparaisons sont envoyées en `toISOString()` avec un cast `::timestamptz`.
+
+**Prévention** — Le harness de test (`test/support/harness.ts`) branche un logger Drizzle. Il fait échouer toute requête qui reçoit un paramètre `Date` brut, ce qui reproduit la contrainte de production dans toute la suite.
+
+**Leçon généralisée** — Quand la base de test est plus tolérante que celle de production, encoder la règle de production comme garde-fou dans la doublure de test, plutôt que de compter sur la relecture.
+
+### LESSON-STUDIO-2026-015 — Un stockage simulé partagé en test masque un stockage vide à chaque requête
 
 **Contexte** — Import de logo puis génération d'un visuel avec la configuration de production.
 

@@ -1,4 +1,5 @@
 import type { Auth } from "./auth/auth.ts";
+import type { OidcVerifier } from "./auth/oidc.ts";
 import type { Principal } from "./auth/rbac.ts";
 import type { Db } from "./db/client.ts";
 import type { Integrations } from "./integrations/types.ts";
@@ -20,6 +21,22 @@ export type Bindings = {
   // WebAuthn relying party (defaults to the host of AUTH_BASE_URL).
   PASSKEY_RP_ID?: string;
   PASSKEY_RP_NAME?: string;
+  // Trigenys Auth (shared identity provider): the MCP endpoint accepts its JWT
+  // access tokens when OIDC_ISSUER is set. OIDC_RESOURCE is the exact resource
+  // the tokens are issued for, OIDC_ORGS the organisations (slug or id) allowed
+  // in, OIDC_APP the expected `app` claim, OIDC_SCOPES the advertised scopes.
+  // Plain vars: the Studio client is public, there is no secret.
+  OIDC_ISSUER?: string;
+  OIDC_RESOURCE?: string;
+  OIDC_ORGS?: string;
+  OIDC_APP?: string;
+  OIDC_SCOPES?: string;
+  // Directory sync from Trigenys Auth (client_credentials, scope `directory`):
+  // enabled when OIDC_ISSUER and DIRECTORY_CLIENT_SECRET (Worker secret) are
+  // set. DIRECTORY_URL defaults to {OIDC_ISSUER}/api/auth/directory.
+  DIRECTORY_CLIENT_ID?: string;
+  DIRECTORY_CLIENT_SECRET?: string;
+  DIRECTORY_URL?: string;
   INTEGRATION_PUBLISHER_MODE?: IntegrationMode;
   INTEGRATION_CMS_MODE?: IntegrationMode;
   INTEGRATION_RADAR_MODE?: IntegrationMode;
@@ -84,6 +101,9 @@ export type Variables = {
   auth: Auth;
   integrations: Integrations;
   principal: Principal | null;
+  // Set when a bearer access token was presented and rejected (MCP 401 hint).
+  tokenRejected?: boolean;
+  oidc: OidcVerifier | null;
   requestId: string;
 };
 

@@ -39,9 +39,9 @@ jobs:
   visual-qa:
     needs: impact
     if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'visual-qa') }}
-    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@52695b28c0a22a2e7cbf46e7db8065a644430062
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@52e1862a20642857bc6e51a2d4ed499fa13b99e3
     with:
-      appfactory_ref: 52695b28c0a22a2e7cbf46e7db8065a644430062
+      appfactory_ref: 8847e4888fc4021060f06ba29f0cf94677ed2d7d
       config_path: .github/appfactory-visual-qa.json
       install_command: npm install --ignore-scripts --no-audit --no-fund
       build_command: npm run build --workspace apps/web

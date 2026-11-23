@@ -416,3 +416,10 @@ Journal de passation en ajout seul. Chaque session ajoute une entrée datée à 
 - Branche `feat/notifications-live` (ADR 0016) : web app servie par le Worker (binding `ASSETS`, aiguillage navigation/fetch dans `src/web/spa.ts`), `npm run check` construit la web, modes e-mail/WhatsApp `live`, `WEB_APP_URL`/`AUTH_TRUSTED_ORIGINS` = origine du Worker.
 - Piège : le repli SPA natif Cloudflare renvoie `index.html` à un `fetch('/tasks/…')` (chemins partagés web/API) → aiguillage dans le Worker.
 - Après merge des deux PR : `gh workflow run appfactory-infrastructure.yml --ref main`, puis assignation test (1 WhatsApp groupe « Trigenys Comm » + 1 e-mail).
+
+## 2026-11-20 12:43 — Web app : barre de navigation basse sur mobile
+
+- Branche `feat/web-mobile-bottom-nav` : sous 768 px, la barre latérale/bande supérieure laisse place à une barre basse fixe (5 sections : Ma journée, Entrées, Calendrier, Rapports, Alertes avec badge), `env(safe-area-inset-*)` + `viewport-fit=cover`, onglet actif en pastille. Compte, réglages admin et déconnexion passent dans un menu « Compte » de l'en-tête. 768–900 px et bureau inchangés.
+- Icônes : 5 tracés Lucide (ISC) inlinés dans `apps/web/src/components/icons.tsx`, aucune dépendance ajoutée (le projet n'avait pas de bibliothèque d'icônes).
+- Non-régression : `e2e/responsive.spec.ts` (10 écrans sans défilement horizontal à 375 px, barre basse, menu Compte, bureau intact) ; les 2 tests mobiles qui cliquaient les réglages ouvrent le menu via `e2e/nav.ts`. Suite e2e : 140/140 sur desktop + mobile.
+- Pièges locaux : disque C: saturé (≈0 Mo libre, rempli par un autre processus) → `npm install` impossible, `npm run check` vérifié étape par étape ; worktree Windows fraîche (`core.autocrlf=true`) → `openapi:check` signale un faux écart CRLF, régénérer le fichier en LF avant le check.

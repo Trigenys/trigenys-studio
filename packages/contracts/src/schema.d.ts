@@ -307,8 +307,92 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
+                /** @description Assignment managed by Trigenys Auth */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directory/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import the Trigenys Auth team now (admin, audited)
+         * @description Runs the directory sync the cron runs every few minutes: members of the configured organisations become Studio users linked to their Trigenys Auth identity, with the roles granted there.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DirectoryReport"];
+                    };
+                };
+                /** @description No valid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Not an admin */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Trigenys Auth refused or failed the listing */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Directory sync not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4954,6 +5038,8 @@ export interface components {
             role: "admin" | "operator" | "reviewer";
             productId: string | null;
             grantedBy: string | null;
+            /** @enum {string} */
+            source: "local" | "idp";
             /** Format: date-time */
             createdAt: string;
         };
@@ -4963,6 +5049,18 @@ export interface components {
             role: "admin" | "operator" | "reviewer";
             /** @default null */
             productId: string | null;
+        };
+        DirectoryReport: {
+            members: number;
+            created: number;
+            linked: number;
+            renamed: number;
+            rolesChanged: number;
+            withdrawn: number;
+            skipped: {
+                sub: string;
+                reason: string;
+            }[];
         };
         Product: {
             id: string;
