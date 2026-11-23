@@ -228,3 +228,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — `test/media-persistence.test.ts` lit le mode et le binding dans la configuration de production, conserve uniquement le bucket de test entre les appels et recrée l'application pour chaque requête. Il couvre import, lecture, rendu, relecture et refus sans session ; il échoue en 404 avec l'ancienne configuration.
 
 **Leçon généralisée** — Pour une intégration avec état, vérifier sa durée de vie réelle et le choix de l'adaptateur de production. Une dépendance injectée plus durable que celle du runtime peut rendre la suite verte tout en masquant une perte de données.
+
+### LESSON-STUDIO-2026-016 — Une recette AppFactory appelée par sa route directe plutôt que par le chemin retenu
+
+**Contexte** — Premier déploiement de la PR #57 (bucket R2 privé `trigenys-studio-media`).
+
+**Failure / near miss** — Le run d'infrastructure échoue sur `CLOUDFLARE_R2_ACCESS_DENIED` (HTTP 502) avant la release du Worker. La production reste sur la version précédente, sans régression.
+
+**Cause racine** — Le workflow appelait `/infrastructure/r2` avant la release. Or les jetons d'exécution d'AppFactory n'ont pas accès à l'API R2 ; Trigenys/appfactory#130 a déplacé la création du bucket dans Workers Builds, déclenchée par `r2` dans `.appfactory/worker.json`. La route directe reste exposée, d'où la confusion. Aucun test ni CI ne pouvait le détecter : seul le run sur `main` appelle AppFactory.
+
+**Résolution** — Suppression de l'étape directe ; la release `/infrastructure/worker` crée le bucket et le workflow vérifie `release.r2.buildCompleted` et le nom du bucket.
+
+**Prévention** — `services/api/test/infrastructure-workflow.test.ts` exige la recette dans `worker.json`, interdit l'appel à `/infrastructure/r2` et exige la vérification du build R2.
+
+**Leçon généralisée** — Avant d'adopter une capacité d'une brique maison, copier l'intégration d'un consommateur qui fonctionne (ici Commerce Factory) et lire les PR récentes de la brique, pas seulement son API : une route encore exposée n'est pas forcément le chemin supporté.
