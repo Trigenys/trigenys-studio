@@ -49,8 +49,9 @@
     "WHATSAPP_NOTIFY_EVENTS": "",
     "INTEGRATION_WHATSAPP_MODE": "mock",
     "NOTIFY_WHATSAPP_BASE_URL": "",
-    // live: objects go to the private VISUALS bucket below (memory otherwise, not durable).
-    "INTEGRATION_MEDIA_MODE": "mock",
+    // Use Wrangler's local R2 emulator so files survive separate dev requests.
+    // There is no remote bucket access during `wrangler dev`.
+    "INTEGRATION_MEDIA_MODE": "live",
     // Better Auth. AUTH_SECRET is a Worker secret (wrangler secret put AUTH_SECRET).
     "AUTH_BASE_URL": "http://localhost:8787",
     "AUTH_TRUSTED_ORIGINS": "http://localhost:5173",

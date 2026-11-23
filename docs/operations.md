@@ -48,7 +48,7 @@ reviewers* et le job de déploiement y reste bloqué tant qu'un humain n'approuv
 | `PASSKEY_RP_ID` | Worker secret / var | sensible | hôte de l'application |
 | `AUTH_BASE_URL`, `AUTH_TRUSTED_ORIGINS`, `PASSKEY_RP_NAME`, `INTEGRATION_*_MODE`, `SERVICE_NAME` | `wrangler.jsonc` | config | par environnement |
 | `VITE_API_URL` | build web | config | vide = même origine |
-| `VISUALS` | binding R2 (`wrangler.jsonc`) | config | bucket privé des logos et visuels ; requis quand `INTEGRATION_MEDIA_MODE=live` |
+| `VISUALS` | binding R2 (configs Wrangler) | config | production : bucket privé `trigenys-studio-media`, provisionné par AppFactory (`private-media`) avant release ; développement : simulateur R2 local ; `INTEGRATION_MEDIA_MODE=live` dans les deux configs (ADR 0017) |
 | `APPFACTORY_RELEASE_TOKEN` | GitHub secret | secret | Release Please uniquement |
 | `BUFFER_API_KEY` | Worker secret (`wrangler secret put BUFFER_API_KEY`) | secret | requis quand `INTEGRATION_PUBLISHER_MODE=live` ; jamais journalisé |
 | `BUFFER_BASE_URL`, `BUFFER_ORGANIZATION_ID`, `PUBLISH_LEAD_MINUTES` | `wrangler.jsonc` | config | API Buffer, organisation (facultatif), avance de remise au fournisseur (10 min) ; cron `*/5 * * * *` déclenche l'outbox |

@@ -2,6 +2,7 @@
   "repository": "Trigenys/trigenys-studio",
   "runtime": "typescript-wrangler",
   "rootDirectory": "/services/api",
+  "r2": { "recipe": "private-media" },
   "generatedSecrets": [
     { "name": "TRIGENYS_STUDIO_AUTH_SECRET", "kind": "token" }
   ]

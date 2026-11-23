@@ -214,3 +214,17 @@ Mémoire des erreurs et near misses significatifs du projet, selon le standard R
 **Prévention** — Le harness de test (`test/support/harness.ts`) branche un logger Drizzle. Il fait échouer toute requête qui reçoit un paramètre `Date` brut, ce qui reproduit la contrainte de production dans toute la suite.
 
 **Leçon généralisée** — Quand la base de test est plus tolérante que celle de production, encoder la règle de production comme garde-fou dans la doublure de test, plutôt que de compter sur la relecture.
+
+### LESSON-STUDIO-2026-015 — Un stockage simulé partagé en test masque un stockage vide à chaque requête
+
+**Contexte** — Import de logo puis génération d'un visuel avec la configuration de production.
+
+**Failure / near miss** — L'import répond 201, mais la lecture suivante répond 404 et le rendu répond 409. Les métadonnées sont en base, les octets ont disparu.
+
+**Cause racine** — Le mode média restait `mock` sans binding R2 en production. Le middleware appelle `createIntegrations` à chaque requête, qui crée un `MemoryMediaStore` vide. Le harness injecte au contraire un même stockage partagé : ses tests ne reproduisaient pas cette durée de vie.
+
+**Résolution** — Activer l'adaptateur R2 existant avec un bucket privé provisionné par la recette AppFactory `private-media` avant release. En développement, utiliser le simulateur R2 local de Wrangler. Aucun cache global en mémoire ne remplace le stockage durable.
+
+**Prévention** — `test/media-persistence.test.ts` lit le mode et le binding dans la configuration de production, conserve uniquement le bucket de test entre les appels et recrée l'application pour chaque requête. Il couvre import, lecture, rendu, relecture et refus sans session ; il échoue en 404 avec l'ancienne configuration.
+
+**Leçon généralisée** — Pour une intégration avec état, vérifier sa durée de vie réelle et le choix de l'adaptateur de production. Une dépendance injectée plus durable que celle du runtime peut rendre la suite verte tout en masquant une perte de données.
