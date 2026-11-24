@@ -1,6 +1,6 @@
 {
   "apps/web": "0.1.0",
-  "services/api": "0.1.0",
+  "services/api": "0.2.0",
   "packages/contracts": "0.1.0",
   "apps/mobile": "0.1.0"
 }
