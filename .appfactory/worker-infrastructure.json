@@ -6,5 +6,6 @@
   "runtime": "typescript-wrangler",
   "rootDirectory": "/services/api",
   "buildCommand": "npm install --ignore-scripts --no-audit --no-fund && npm run check",
-  "deployCommand": "npm exec --no -- wrangler deploy --config wrangler.production.jsonc --keep-vars"
+  "deployCommand": "npm exec --no -- wrangler deploy --config wrangler.production.jsonc --keep-vars",
+  "r2Recipe": "private-media"
 }
