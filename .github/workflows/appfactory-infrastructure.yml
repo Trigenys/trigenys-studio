@@ -7,7 +7,8 @@ name: AppFactory infrastructure
 # 2. AppFactory leases that URL to this workflow only (OIDC, main, push or
 #    dispatch), masked in the logs;
 # 3. drizzle-kit applies the pending migrations (journal-based, idempotent).
-# AppFactory also reconciles a private R2 media bucket before any Worker release.
+# The Worker release also creates or reuses the private R2 media bucket in Workers Builds
+# (recipe private-media in .appfactory/worker.json); the release fails if that build fails.
 # Then the production Worker trigenys-studio-api (declared in .appfactory/worker.json):
 # 4. first run only, AppFactory bootstraps the Worker and its Workers Builds trigger;
 # 5. AppFactory binds the managed Hyperdrive (profile trigenys-studio-production);
@@ -160,44 +161,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-
-      - name: Reconcile the private media bucket through AppFactory
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const token = await core.getIDToken('appfactory-api');
-            core.setSecret(token);
-            const repository = context.repo.owner + '/' + context.repo.repo;
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 60000);
-            let response;
-            try {
-              response = await fetch(process.env.APPFACTORY_URL + '/infrastructure/r2', {
-                method: 'POST',
-                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repository, recipe: 'private-media' }),
-                signal: controller.signal
-              });
-            } finally {
-              clearTimeout(timeout);
-            }
-            let payload;
-            try { payload = await response.json(); }
-            catch { throw new Error('AppFactory R2 provisioning returned invalid JSON (HTTP ' + response.status + ').'); }
-            if (!response.ok || payload.status !== 'PROVISIONED') {
-              const code = typeof payload.error === 'string' ? payload.error.replace(/[^A-Z0-9_]/g, '').slice(0, 80) : 'UNKNOWN';
-              throw new Error('AppFactory R2 provisioning blocked: ' + code + ' (HTTP ' + response.status + ').');
-            }
-            const media = payload.infrastructure;
-            if (media?.repository !== repository || media.recipe !== 'private-media' ||
-                media.bucket?.name !== process.env.EXPECTED_MEDIA_BUCKET ||
-                media.bucket.publicManagedDomainEnabled !== false ||
-                media.workerBinding?.bucketName !== process.env.EXPECTED_MEDIA_BUCKET) {
-              throw new Error('AppFactory returned an unexpected or public media bucket.');
-            }
-            core.summary.addRaw('Private media bucket ready: ' + media.bucket.name +
-              ' (created: ' + Boolean(media.bucket.created) + ').\n');
-            await core.summary.write();
 
       - name: Reconcile the Worker and its Hyperdrive binding through AppFactory
         uses: actions/github-script@v8

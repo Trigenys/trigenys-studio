@@ -16,10 +16,11 @@ mémoire partagé, ce qui masquait ce défaut de configuration.
 - Activer l'adaptateur `R2MediaStore` existant : `INTEGRATION_MEDIA_MODE=live` et
   binding `VISUALS` vers le bucket privé `trigenys-studio-media` en production.
 - Utiliser la recette AppFactory `private-media` dans `.appfactory/worker.json`.
-  Le workflow d'infrastructure appelle d'abord `/infrastructure/r2` par OIDC,
-  vérifie le nom dérivé du dépôt et le domaine public géré désactivé, puis
-  réconcilie le Worker. AppFactory configure le jeton Workers Builds adapté à R2.
-  La release ne passe que si le build avec la recette média est terminé.
+  La release du Worker (`/infrastructure/worker`) crée ou réutilise le bucket dans
+  Workers Builds, avec le jeton de build enregistré qui a accès à R2. Le workflow
+  ne passe que si ce build est terminé et que le bucket attendu est rapporté.
+  Pas d'appel direct à `/infrastructure/r2` : les jetons d'exécution d'AppFactory
+  n'ont pas accès à l'API R2 (`CLOUDFLARE_R2_ACCESS_DENIED`, voir Trigenys/appfactory#130).
 - En développement, utiliser le binding R2 local déjà déclaré, avec l'adaptateur
   R2 activé. Wrangler simule le bucket localement ; aucune requête média n'atteint
   le bucket distant.
